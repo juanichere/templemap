@@ -1,0 +1,2762 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+/* Lo que antes ponía la plataforma de artifacts y ahora servimos nosotros. */
+:root{
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html,body{margin:0}
+body{font:14px system-ui,-apple-system,sans-serif}
+img{max-width:100%}
+[hidden]{display:none !important}
+</style>
+<title>Minimundo TEMPLE</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
+
+<style>
+/* Minimundo TEMPLE — diorama nocturno de CABA. Un solo mundo visual (oscuro),
+   paleta del manual de marca TEMPLE, radio 0 en todo (lenguaje wireframe). */
+:root{
+  color-scheme: dark;
+  --ink:#231f20;
+  --noche:#17151b;
+  --noche-2:#1f1c24;
+  --paper:#f4f2ee;
+  --yellow:#fae100;
+  --magenta:#d40f7d;
+  --cyan:#219895;
+  --cyan-claro:#3fc0bc;
+  --n400:#bdb8b0;
+  --n500:#9a948c;
+  --n600:#7a746d;
+  --linea:rgba(244,242,238,.16);
+  --linea-fuerte:rgba(244,242,238,.3);
+  --panel:rgba(23,21,27,.86);
+  --cond:"Barlow Condensed","Barlow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--noche);color:var(--paper);
+  font-family:var(--body);font-size:14px;line-height:1.4;
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+.num{font-variant-numeric:tabular-nums}
+
+#wrap{position:relative;height:100%;width:100%;overflow:hidden}
+#lienzo{position:absolute;inset:0}
+#lienzo canvas{display:block;width:100% !important;height:100% !important}
+
+/* ---------- marcas de registro, del manual de marca ---------- */
+.marca{position:relative}
+.marca::before,.marca::after{
+  content:"";position:absolute;width:9px;height:9px;pointer-events:none;
+  border-top:1px solid var(--linea-fuerte);border-left:1px solid var(--linea-fuerte);
+}
+.marca::before{left:-1px;top:-1px}
+.marca::after{right:-1px;bottom:-1px;transform:rotate(180deg)}
+
+/* ---------- barra superior ---------- */
+#barra{
+  position:absolute;left:0;right:0;top:0;z-index:4;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding-block:11px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:linear-gradient(to bottom,rgba(23,21,27,.92),rgba(23,21,27,0));
+  pointer-events:none;
+}
+#barra > *{pointer-events:auto}
+.logo{display:flex;align-items:baseline;gap:9px;min-width:0}
+.logo b{
+  font-family:var(--cond);font-weight:700;font-size:25px;line-height:1;
+  letter-spacing:.2em;color:var(--yellow);
+}
+.logo span{
+  font-family:var(--cond);font-weight:600;font-size:14px;letter-spacing:.17em;
+  text-transform:uppercase;color:rgba(244,242,238,.6);white-space:nowrap;
+}
+.sim{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 8px;
+  font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink);background:var(--yellow);
+}
+.spacer{flex:1 1 auto;min-width:0}
+#reloj{
+  display:flex;align-items:center;gap:10px;padding:5px 11px;
+  background:var(--panel);border:1px solid var(--linea);
+}
+#reloj .h{font-family:var(--cond);font-weight:700;font-size:23px;line-height:1;letter-spacing:.04em}
+#reloj .d{font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--n500)}
+.velos{display:flex;gap:0;border:1px solid var(--linea);background:var(--panel)}
+.velos button{
+  font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;min-height:32px;padding:0 10px;
+  background:transparent;border:0;border-left:1px solid var(--linea);
+  color:rgba(244,242,238,.66);cursor:pointer;
+}
+.velos button:first-child{border-left:0}
+.velos button:hover{color:var(--paper);background:rgba(244,242,238,.07)}
+.velos button[aria-pressed="true"]{background:var(--yellow);color:var(--ink)}
+.conexion{
+  font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.12em;
+  text-transform:uppercase;min-height:34px;padding:0 12px;white-space:nowrap;
+  display:flex;align-items:center;background:var(--panel);
+  border:1px solid var(--linea);color:var(--n500);
+}
+
+/* ---------- puerta ---------- */
+#puerta{
+  position:absolute;inset:0;z-index:12;display:grid;place-content:center;
+  background:var(--noche);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+#formLogin{display:flex;flex-direction:column;gap:12px;width:min(320px,86vw);
+  background:var(--noche-2);border:1px solid var(--linea);padding:22px}
+#formLogin .logo{margin-bottom:4px}
+#formLogin input{
+  min-height:40px;padding:8px 11px;font:inherit;font-size:15px;color:var(--paper);
+  background:var(--noche);border:1px solid var(--linea);border-radius:0;
+}
+#formLogin button{
+  min-height:38px;font-family:var(--cond);font-weight:600;font-size:13px;
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0;
+  background:var(--yellow);border:1px solid var(--yellow);color:var(--ink);
+}
+#formLogin p{margin:0;font-size:13px;color:var(--magenta);min-height:18px}
+
+.snd{
+  font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;min-height:34px;padding:0 11px;white-space:nowrap;
+  background:var(--panel);border:1px solid var(--linea);color:rgba(244,242,238,.6);cursor:pointer;
+}
+.snd:hover{color:var(--paper)}
+.snd[aria-pressed="true"]{background:var(--cyan);border-color:var(--cyan);color:var(--ink)}
+
+.prog{height:9px;background:rgba(244,242,238,.14);margin:9px 0 5px;position:relative;overflow:hidden}
+.prog i{position:absolute;inset:0 auto 0 0;display:block;background:var(--yellow);transition:width .45s}
+.progPie{display:flex;justify-content:space-between;gap:8px;margin-bottom:7px;
+  font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--n600)}
+.progPie b{color:var(--yellow)}
+
+/* ---------- columna de datos ---------- */
+#datos{
+  position:absolute;z-index:5;top:64px;right:0;bottom:0;width:336px;
+  display:flex;flex-direction:column;gap:9px;overflow-y:auto;overscroll-behavior:contain;
+  padding-block:4px 16px;
+  padding-left:12px;padding-right:max(16px,env(safe-area-inset-right,0px));
+  scrollbar-width:thin;
+}
+.tarj{background:var(--panel);border:1px solid var(--linea);padding:12px;backdrop-filter:blur(7px)}
+.rot{
+  font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.17em;
+  text-transform:uppercase;color:var(--n500);margin-bottom:7px;
+}
+.granNum{
+  font-family:var(--cond);font-weight:700;font-size:40px;line-height:.98;
+  letter-spacing:-.005em;color:var(--yellow);
+}
+.granSub{font-size:12px;color:var(--n400);margin-top:4px}
+.granSub b{color:var(--paper);font-weight:600}
+.tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;
+  margin-top:11px;background:var(--linea)}
+.tres div{background:var(--noche-2);padding:7px 8px;min-width:0}
+.tres .k{font-family:var(--cond);font-weight:600;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--n600);white-space:nowrap}
+.tres .v{font-family:var(--cond);font-weight:600;font-size:17px;line-height:1.15;
+  overflow:hidden;text-overflow:ellipsis}
+
+/* ranking */
+#rank{display:flex;flex-direction:column;gap:1px;background:var(--linea)}
+.fila{
+  display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;
+  width:100%;text-align:left;background:var(--noche-2);border:0;
+  border-left:3px solid transparent;padding:7px 9px 8px;color:inherit;cursor:pointer;
+  font:inherit;transition:background .12s;
+}
+.fila:hover{background:#2a2630}
+.fila[aria-pressed="true"]{background:#2f2a36;border-left-color:var(--yellow)}
+.fila .p{font-family:var(--cond);font-weight:700;font-size:13px;color:var(--n600);
+  text-align:right}
+.fila .n{font-family:var(--cond);font-weight:600;font-size:14px;letter-spacing:.05em;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fila .m{font-family:var(--cond);font-weight:600;font-size:14px;white-space:nowrap}
+.fila .barra{grid-column:2/4;height:4px;background:rgba(244,242,238,.1);position:relative}
+.fila .barra i{position:absolute;inset:0 auto 0 0;display:block;transition:width .3s}
+.fila .pc{grid-column:2/4;display:flex;justify-content:space-between;gap:8px;
+  font-size:11px;color:var(--n500)}
+.fila .pc b{font-weight:600}
+
+/* feed */
+#feed{display:flex;flex-direction:column;gap:0}
+.tic{
+  display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:8px;align-items:baseline;
+  padding:4px 0;border-top:1px solid rgba(244,242,238,.08);
+}
+.tic:first-child{border-top:0}
+.tic .t{font-family:var(--cond);font-size:12px;color:var(--n600)}
+.tic .l{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing:.05em;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tic .v{font-family:var(--cond);font-weight:600;font-size:13px;color:var(--yellow);
+  white-space:nowrap}
+.tic.vacio{opacity:.25}
+
+/* detalle de local */
+#detalle{display:none}
+#detalle.on{display:block}
+#detalle .cab{display:flex;align-items:flex-start;gap:9px;margin-bottom:3px}
+#detalle .tit{font-family:var(--cond);font-weight:700;font-size:23px;line-height:1.05;
+  letter-spacing:.05em;text-transform:uppercase;flex:1;min-width:0}
+#detalle .dir{font-size:12px;color:var(--n400);line-height:1.35}
+.cerrar{
+  background:transparent;border:1px solid var(--linea);color:var(--n400);
+  width:26px;height:26px;flex:none;cursor:pointer;font-size:15px;line-height:1;
+}
+.cerrar:hover{color:var(--paper);border-color:var(--linea-fuerte)}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 7px;margin-top:8px;
+  font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.11em;
+  text-transform:uppercase;border:1px solid currentColor;
+}
+/* El facturado de un local son ocho o nueve dígitos y en una celda de tres
+   columnas se corta. Va solo, a lo ancho, y los contadores abajo. */
+#detalle .tres{grid-template-columns:repeat(2,minmax(0,1fr))}
+#detalle .tres > div:first-child{grid-column:1/-1}
+#detalle .tres > div:first-child .v{font-size:25px}
+#spark{display:block;width:100%;height:50px;margin-top:11px}
+.sparkPie{display:flex;justify-content:space-between;font-family:var(--cond);
+  font-size:10px;letter-spacing:.1em;color:var(--n600);text-transform:uppercase}
+
+/* resto del país */
+#resto{display:flex;flex-direction:column;gap:0}
+.rfila{display:flex;justify-content:space-between;gap:8px;padding:3px 0;
+  border-top:1px solid rgba(244,242,238,.08);font-size:12px}
+.rfila:first-child{border-top:0}
+.rfila span{font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--n400);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.rfila b{font-family:var(--cond);font-weight:600;font-size:12px;white-space:nowrap}
+
+/* pie de ayuda */
+#ayuda{
+  position:absolute;left:0;bottom:0;z-index:4;max-width:min(430px,56%);
+  padding-block:10px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;
+  font-size:12px;color:var(--n600);pointer-events:none;
+}
+#ayuda b{color:var(--n400);font-weight:600}
+#ayuda a{color:var(--cyan-claro);pointer-events:auto;white-space:nowrap}
+
+/* ---------- modo TV: pantalla sola, sin panel, rotando de local ---------- */
+#wrap.tv #datos,#wrap.tv #ayuda,#wrap.tv #barra{display:none}
+#tele{
+  position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;
+  justify-content:space-between;gap:16px;pointer-events:none;
+  padding-block:20px 24px;
+  padding-left:max(26px,env(safe-area-inset-left,0px));
+  padding-right:max(26px,env(safe-area-inset-right,0px));
+}
+.teleArriba{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.teleArriba .logo b{font-size:38px}
+.teleArriba .logo span{font-size:17px}
+.teleReloj{text-align:right}
+.teleReloj > div:first-child{font-family:var(--cond);font-weight:700;font-size:52px;line-height:1}
+.teleReloj > div:last-child{font-family:var(--cond);font-weight:600;font-size:15px;
+  letter-spacing:.17em;text-transform:uppercase;color:var(--n500)}
+.teleAbajo{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.teleLocal,.teleCadena{background:var(--panel);border:1px solid var(--linea);padding:18px 20px;
+  backdrop-filter:blur(7px);min-width:0}
+.teleLocal{flex:1 1 440px}
+.teleCadena{flex:0 1 330px}
+.teleNom{font-family:var(--cond);font-weight:700;font-size:54px;line-height:1;
+  letter-spacing:.04em;text-transform:uppercase}
+.teleDir{font-size:15px;color:var(--n400);margin-top:3px}
+.teleMonto{font-family:var(--cond);font-weight:700;font-size:72px;line-height:1;
+  color:var(--yellow);margin-top:10px}
+.teleTotal{font-family:var(--cond);font-weight:700;font-size:40px;line-height:1;color:var(--yellow)}
+.teleCadena .prog,.teleLocal .prog{margin-top:12px}
+.telePuntos{display:flex;gap:5px;margin-top:12px}
+.telePuntos i{flex:1;height:4px;background:rgba(244,242,238,.2);display:block}
+.telePuntos i.on{background:var(--yellow)}
+#teleSalir{
+  pointer-events:auto;align-self:center;background:transparent;border:1px solid var(--linea);
+  color:var(--n500);font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;min-height:32px;padding:0 14px;cursor:pointer;opacity:.5;
+}
+#teleSalir:hover{opacity:1;color:var(--paper)}
+@media (max-width:760px){
+  .teleArriba .logo b{font-size:27px}
+  .teleReloj > div:first-child{font-size:34px}
+  .teleNom{font-size:33px}
+  .teleMonto{font-size:44px}
+  .teleTotal{font-size:28px}
+  .teleCadena{flex:1 1 100%}
+}
+
+/* carga */
+#carga{
+  position:absolute;inset:0;z-index:9;display:grid;place-content:center;gap:10px;
+  justify-items:center;background:var(--noche);transition:opacity .5s;
+}
+#carga.off{opacity:0;pointer-events:none}
+#carga p{font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--n600);margin:0}
+
+/* mobile: la columna pasa a ser una hoja de abajo */
+#plegar{display:none}
+@media (max-width:900px){
+  #datos{
+    top:auto;left:0;right:0;bottom:0;width:auto;max-height:40%;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px));
+    padding-block:0 12px;
+    background:linear-gradient(to bottom,rgba(23,21,27,0),rgba(23,21,27,.72) 22px);
+  }
+  #plegar{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    position:sticky;top:0;z-index:2;width:100%;min-height:30px;
+    background:var(--panel);border:1px solid var(--linea);border-bottom:0;
+    font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--n400);cursor:pointer;
+  }
+  #datos.plegada{max-height:30px;overflow:hidden}
+  #ayuda{display:none}
+  .granNum{font-size:33px}
+  #barra{gap:9px;padding-block:9px}
+  .logo b{font-size:21px}
+  .logo span{display:none}
+}
+@media (max-width:420px){
+  #reloj .h{font-size:19px}
+  .velos button{padding:0 8px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important}
+}
+:focus-visible{outline:2px solid var(--yellow);outline-offset:1px}
+</style>
+
+</head>
+<body>
+<div id="wrap">
+  <div id="lienzo"></div>
+
+  <div id="barra">
+    <div class="logo"><b>TEMPLE</b><span>Minimundo</span></div>
+    <div class="sim" id="simChip" hidden>Datos simulados</div>
+    <div class="spacer"></div>
+    <div id="reloj" class="marca">
+      <div>
+        <div class="h num" id="hReloj">21:00</div>
+        <div class="d" id="dReloj">Domingo</div>
+      </div>
+    </div>
+    <div class="velos marca" id="vistas" hidden>
+      <button type="button" data-vista="pais" aria-pressed="false">País</button>
+      <button type="button" data-vista="ciudad" aria-pressed="true">Ciudad</button>
+    </div>
+    <div class="velos marca" id="modos">
+      <button type="button" data-modo="dia" aria-pressed="true">Día</button>
+      <button type="button" data-modo="mes" aria-pressed="false">Mes</button>
+    </div>
+    <div class="conexion marca" id="conexion">Conectando…</div>
+    <button type="button" id="sonido" class="snd marca" aria-pressed="false">
+      <span id="sndTxt">Sonido</span>
+    </button>
+    <button type="button" id="btnTv" class="snd marca">Modo TV</button>
+  </div>
+
+  <div id="tele" hidden>
+    <div class="teleArriba">
+      <div class="logo"><b>TEMPLE</b><span>Minimundo</span></div>
+      <div class="teleReloj">
+        <div class="num" id="teleHora">21:00</div>
+        <div id="teleDia">Domingo</div>
+      </div>
+    </div>
+    <div class="teleAbajo">
+      <div class="teleLocal marca">
+        <div class="teleNom" id="teleNom">—</div>
+        <div class="teleDir" id="teleDir">—</div>
+        <div class="rot" id="teleRot">Facturado hoy</div>
+        <div class="teleMonto num" id="teleMonto">$ 0</div>
+        <div class="prog"><i id="teleProg"></i></div>
+        <div class="progPie"><span id="teleEstado">—</span><b class="num" id="telePct">0%</b></div>
+      </div>
+      <div class="teleCadena marca">
+        <div class="rot" id="teleRotCad">Toda la cadena · hoy</div>
+        <div class="teleTotal num" id="teleTotal">$ 0</div>
+        <div class="progPie"><span id="teleTk">0 tickets</span><b class="num" id="teleObj">0%</b></div>
+        <div class="telePuntos" id="telePuntos"></div>
+      </div>
+    </div>
+    <button type="button" id="teleSalir">Salir del modo TV</button>
+  </div>
+
+  <div id="datos">
+    <button type="button" id="plegar">— Panel</button>
+
+    <div class="tarj marca">
+      <div class="rot" id="rotTot">Facturación de la cadena · hoy</div>
+      <div class="granNum num" id="totHoy">$ 0</div>
+      <div class="prog"><i id="progCadena"></i></div>
+      <div class="progPie"><span id="rotObj">Objetivo del día</span><b class="num" id="progPct">0%</b></div>
+      <div class="granSub" id="totVs">—</div>
+      <div class="tres">
+        <div><div class="k">Tickets</div><div class="v num" id="totTk">0</div></div>
+        <div><div class="k">Ticket prom.</div><div class="v num" id="totTp">$ 0</div></div>
+        <div><div class="k">Locales</div><div class="v num" id="totLc">17</div></div>
+      </div>
+    </div>
+
+    <div class="tarj marca" id="detalle">
+      <div class="cab">
+        <div class="tit" id="dTit">—</div>
+        <button type="button" class="cerrar" id="dCerrar" aria-label="Volver a la ciudad">×</button>
+      </div>
+      <div class="dir" id="dDir">—</div>
+      <div class="chip" id="dChip">—</div>
+      <div class="tres">
+        <div><div class="k" id="dKFact">Facturado hoy</div><div class="v num" id="dFact">$ 0</div></div>
+        <div><div class="k">Tickets</div><div class="v num" id="dTk">0</div></div>
+        <div><div class="k">Ticket prom.</div><div class="v num" id="dTp">$ 0</div></div>
+      </div>
+      <canvas id="spark" width="620" height="100"></canvas>
+      <div class="sparkPie">
+        <span id="spkIzq">06h</span><span id="spkMed">Facturación por hora</span><span id="spkDer">05h</span>
+      </div>
+    </div>
+
+    <div class="tarj marca">
+      <div class="rot" id="rotRank">Ranking · Ciudad de Buenos Aires</div>
+      <div id="rank"></div>
+    </div>
+
+    <div class="tarj marca">
+      <div class="rot">Ventas en vivo</div>
+      <div id="feed"></div>
+    </div>
+
+    <div class="tarj marca" id="tarjResto">
+      <div class="rot">Resto del país</div>
+      <div id="resto"></div>
+    </div>
+  </div>
+
+  <div id="ayuda">
+    <b>Arrastrá</b> para girar · <b>rueda</b> para acercar · <b>clic derecho</b> para desplazar ·
+    <b>clic en un local</b> para entrar. La altura del haz es lo facturado contra el objetivo
+    —del día o del mes, según el modo— y la corona es el que va primero.
+    <a href="monitor.html">Ajustes y monitor</a>
+  </div>
+
+  <div id="puerta" hidden>
+    <form id="formLogin" class="marca">
+      <div class="logo"><b>TEMPLE</b><span>Minimundo</span></div>
+      <input id="clave" type="password" placeholder="Contraseña"
+             autocomplete="current-password" required>
+      <button type="submit">Entrar</button>
+      <p id="errLogin"></p>
+    </form>
+  </div>
+
+  <div id="carga"><p id="cargaTxt">Conectando con los locales…</p></div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
+
+/* ════════════════════════════════════════════════════════════════════════════
+   1 · GEOGRAFÍA
+   Lo único que está cableado acá es la forma de Buenos Aires. Los locales, sus
+   coordenadas, sus objetivos y su facturación vienen todos del server.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+// Contorno aproximado de la Ciudad de Buenos Aires: río al este, Riachuelo al
+// sur, Av. General Paz al oeste y al norte.
+const CABA = [
+  [-34.5345,-58.4617],[-34.5408,-58.4466],[-34.5432,-58.4320],[-34.5520,-58.4258],
+  [-34.5604,-58.4152],[-34.5700,-58.4042],[-34.5782,-58.3932],[-34.5852,-58.3836],
+  [-34.5920,-58.3700],[-34.5990,-58.3618],[-34.6062,-58.3520],[-34.6140,-58.3452],
+  [-34.6230,-58.3498],[-34.6305,-58.3560],[-34.6380,-58.3590],[-34.6452,-58.3640],
+  [-34.6498,-58.3730],[-34.6512,-58.3900],[-34.6530,-58.4080],[-34.6600,-58.4230],
+  [-34.6680,-58.4400],[-34.6718,-58.4600],[-34.6660,-58.4770],[-34.6560,-58.4930],
+  [-34.6480,-58.5120],[-34.6420,-58.5290],[-34.6300,-58.5310],[-34.6140,-58.5290],
+  [-34.6000,-58.5240],[-34.5870,-58.5150],[-34.5760,-58.5040],[-34.5650,-58.4930],
+  [-34.5530,-58.4820],[-34.5430,-58.4720],
+];
+
+// Parques grandes: centro y radio en km.
+const PARQUES = [
+  [-34.5720,-58.4180,1.15], [-34.6155,-58.3530,.95], [-34.6060,-58.4350,.34],
+  [-34.6355,-58.4390,.46],  [-34.6450,-58.4780,.44], [-34.5565,-58.4880,.70],
+  [-34.5890,-58.4720,.30],
+];
+
+// Avenidas, como polilíneas. Sólo para que el plano se lea como Buenos Aires.
+const AVENIDAS = [
+  [[-34.6085,-58.3705],[-34.6180,-58.4100],[-34.6250,-58.4450],[-34.6350,-58.4900],[-34.6400,-58.5250]], // Rivadavia
+  [[-34.5980,-58.3820],[-34.5900,-58.4000],[-34.5790,-58.4260],[-34.5660,-58.4480],[-34.5500,-58.4650],[-34.5420,-58.4760]], // Santa Fe / Cabildo
+  [[-34.6065,-58.3700],[-34.6030,-58.3980],[-34.5970,-58.4280],[-34.5890,-58.4600],[-34.5840,-58.4860]], // Corrientes
+  [[-34.5950,-58.3830],[-34.6090,-58.3810],[-34.6230,-58.3800]], // 9 de Julio
+  [[-34.5900,-58.3850],[-34.5790,-58.4030],[-34.5650,-58.4280],[-34.5480,-58.4560],[-34.5390,-58.4680]], // Libertador
+  [[-34.5720,-58.4190],[-34.5840,-58.4340],[-34.5990,-58.4540],[-34.6100,-58.4760]], // Juan B. Justo
+  [[-34.6100,-58.3660],[-34.5950,-58.3760],[-34.5800,-58.3920],[-34.5660,-58.4120]], // Costanera / Illia
+];
+
+const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MICROCENTRO = [-34.6037,-58.3816];
+
+/* ════════════════════════════════════════════════════════════════════════════
+   2 · PROYECCIÓN
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const CENTRO = { lat:-34.6020, lng:-58.4330 };
+const ESCALA = 26;                                   // unidades de mundo por km
+const KM_LAT = 111.32;
+const KM_LNG = 111.32 * Math.cos(CENTRO.lat * Math.PI / 180);
+
+const proj = (lat, lng) => [
+  (lng - CENTRO.lng) * KM_LNG * ESCALA,
+  -(lat - CENTRO.lat) * KM_LAT * ESCALA,
+];
+
+const CABA_XZ = CABA.map(([la, ln]) => proj(la, ln));
+const BB = CABA_XZ.reduce((a, [x, z]) => ({
+  x0: Math.min(a.x0, x), x1: Math.max(a.x1, x),
+  z0: Math.min(a.z0, z), z1: Math.max(a.z1, z),
+}), { x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9 });
+const BB_W = BB.x1 - BB.x0, BB_H = BB.z1 - BB.z0;
+
+// La textura del suelo se mapea sobre un cuadrado centrado en la ciudad, no
+// sobre el bounding box: si no, la grilla de calles sale estirada en un eje y
+// las manzanas pintadas no coinciden con las manzanas construidas.
+const CX = (BB.x0 + BB.x1) / 2, CZ = (BB.z0 + BB.z1) / 2;
+const EXT = Math.max(BB_W, BB_H) * 1.04;
+
+function dentro(x, z) {                              // punto en polígono
+  let hit = false;
+  for (let i = 0, j = CABA_XZ.length - 1; i < CABA_XZ.length; j = i++) {
+    const [xi, zi] = CABA_XZ[i], [xj, zj] = CABA_XZ[j];
+    if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) hit = !hit;
+  }
+  return hit;
+}
+
+function distASegmento(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az;
+  const l2 = dx * dx + dz * dz;
+  const t = l2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2)) : 0;
+  const cx = ax + t * dx, cz = az + t * dz;
+  return Math.hypot(px - cx, pz - cz);
+}
+
+const AV_XZ = AVENIDAS.map(p => p.map(([la, ln]) => proj(la, ln)));
+const PQ_XZ = PARQUES.map(([la, ln, r]) => { const [x, z] = proj(la, ln); return [x, z, r * ESCALA]; });
+const [MC_X, MC_Z] = proj(MICROCENTRO[0], MICROCENTRO[1]);
+
+/* ════════════════════════════════════════════════════════════════════════════
+   3 · DATOS EN VIVO
+   Todo sale del server: GET /api/estado para el snapshot y /api/stream (SSE)
+   para cada ticket. No hay nada simulado de este lado.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const INICIO_DIA = 6;                       // el día comercial de un bar cierra a las 6
+const posDia = h => (h - INICIO_DIA + 24) % 24;
+const ORDEN = Array.from({ length: 24 }, (_, i) => (i + INICIO_DIA) % 24);
+
+let LOCALES = [];                           // se llena con el primer snapshot
+
+const S = {
+  modo: 'dia',                              // 'dia' | 'mes'
+  vista: 'ciudad',                          // 'ciudad' | 'pais'
+  hora: 12,
+  fecha: new Date(),
+  zona: 'America/Argentina/Buenos_Aires',
+  diaComercial: '',
+  periodo: '',
+  diasMes: 30,
+  fsumPrevios: 0,
+  simulado: false,
+  conectado: false,
+  cadena: {
+    hoy: { monto: 0, tickets: 0 }, ayer: { monto: 0, tickets: 0 },
+    mes: { monto: 0, tickets: 0 }, mesAnterior: { monto: 0, tickets: 0 },
+    objetivoDia: 1, objetivoMes: 1,
+  },
+  feed: [],
+  sel: null,
+};
+
+const diaSemana = () => S.fecha.getDay();
+
+// La hora de Buenos Aires, no la del navegador: esto se puede estar mirando
+// desde una compu con el reloj en otro lado.
+let fmtHM = null;
+function horaDeLaZona() {
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: S.zona, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const v = t => Number(p.find(x => x.type === t).value);
+  return v('hour') + v('minute') / 60 + v('second') / 3600;
+}
+function hhmmZona(iso) {
+  if (!fmtHM) {
+    fmtHM = new Intl.DateTimeFormat('es-AR', {
+      timeZone: S.zona, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    });
+  }
+  return fmtHM.format(new Date(iso));
+}
+
+// ── sincronización ─────────────────────────────────────────────────────────
+// El snapshot manda: pisa los totales en vez de sumarlos. Así una reconexión
+// después de un corte deja todo bien sin tener que adivinar qué se perdió.
+function acumular(curva) {
+  const cum = [];
+  let a = 0;
+  for (let k = 0; k < 24; k++) { a += curva[ORDEN[k]]; cum.push(a); }
+  return cum;
+}
+
+function sincronizar(e) {
+  const otroDia = S.diaComercial && S.diaComercial !== e.dia_comercial;
+
+  S.zona = e.zona || S.zona;
+  fmtHM = null;
+  S.diaComercial = e.dia_comercial;
+  S.periodo = e.periodo;
+  S.diasMes = e.dias_mes;
+  S.fsumPrevios = e.fsum_previos;
+  S.simulado = !!e.simulador;
+  S.fecha = new Date(e.dia_comercial + 'T12:00:00');
+  S.hora = horaDeLaZona();
+
+  S.cadena = {
+    hoy: e.cadena.hoy,
+    ayer: e.cadena.ayer,
+    mes: e.cadena.mes,
+    mesAnterior: e.cadena.mes_anterior,
+    objetivoDia: e.cadena.objetivo_diario || 1,
+    objetivoMes: e.cadena.objetivo_mensual || 1,
+  };
+
+  const previos = new Map(LOCALES.map(L => [L.id, L]));
+  LOCALES = e.locales.map(d => {
+    const L = previos.get(d.id) || { id: d.id, pulso: 0, hazAlto: 0, aroT: 99 };
+    Object.assign(L, {
+      nombre: d.nombre, dir: d.dir, barrio: d.barrio,
+      lat: d.lat, lng: d.lng, mapa: !!d.en_mapa,
+      objetivo: d.objetivo_diario || 1,
+      objetivoMes: d.objetivo_mensual || 1,
+      curva: d.curva,
+      fact: d.hoy.monto, tickets: d.hoy.tickets,
+      mesTotal: d.mes.monto, tkMesTotal: d.mes.tickets,
+      ayer: d.ayer.monto, mesAnterior: d.mes_anterior.monto,
+      hist: d.horas.slice(),
+      histMes: d.dias.slice(),
+    });
+    L.cum = acumular(L.curva);
+    // Si al cargar ya pasó el objetivo, no se festeja: el festejo es para
+    // cuando pasa de verdad, no cada vez que alguien abre el tablero.
+    if (otroDia || L.festejado === undefined) L.festejado = L.fact >= L.objetivo;
+    return L;
+  });
+  return otroDia;
+}
+
+// ── una venta que llega por el stream ──────────────────────────────────────
+function aplicarVenta(v) {
+  const L = LOCALES.find(x => x.id === v.local_id);
+  if (!L) return;
+
+  const deHoy = v.dia_com === S.diaComercial;
+  const delMes = String(v.dia_com).slice(0, 7) === S.periodo;
+
+  if (deHoy) {
+    L.fact += v.monto; L.tickets++;
+    if (v.hora_local >= 0 && v.hora_local < 24) L.hist[v.hora_local] += v.monto;
+    S.cadena.hoy.monto += v.monto; S.cadena.hoy.tickets++;
+  }
+  if (delMes) {
+    L.mesTotal += v.monto; L.tkMesTotal++;
+    const i = Number(String(v.dia_com).slice(8, 10)) - 1;
+    if (L.histMes[i] !== undefined) L.histMes[i] += v.monto;
+    S.cadena.mes.monto += v.monto; S.cadena.mes.tickets++;
+  }
+
+  // Un ticket viejo que entra tarde suma a los totales pero no hace fiesta en
+  // la ciudad: el mundo muestra lo que está pasando ahora.
+  if (!deHoy) return;
+
+  S.feed.unshift({ n: L.nombre, t: hhmmZona(v.ts), monto: v.monto, col: COLOR_ESTADO[estado(L)] });
+  if (S.feed.length > 14) S.feed.pop();
+
+  const cruzo = !L.festejado && L.fact >= L.objetivo;
+  if (cruzo) L.festejado = true;
+
+  sonar(cruzo ? 'objetivo' : 'venta');
+
+  // En la vista país no hay gente ni monedas: a 1.600 km de distancia una
+  // persona caminando no significa nada. Pulsa el marcador y listo.
+  if (S.vista === 'pais') {
+    pulsoPais(L);
+    if (cruzo) {
+      const M = MARCADORES.find(m => m.miembros.includes(L));
+      if (M) festejar(M.wx, 12, M.wz);
+    }
+    return;
+  }
+
+  if (!L.mundo) return;
+  L.pulso = 1;
+  aro(L);
+  moneda(L);
+  persona(L);
+  cartel(L, v.monto);
+  if (cruzo) festejar(L.wx, L.alto + 6, L.wz);
+}
+
+// ── cuánto del período ya pasó ─────────────────────────────────────────────
+function esperado(L) {
+  const p = posDia(S.hora);
+  const k = Math.floor(p), f = p - k;
+  const a = k > 0 ? L.cum[k - 1] : 0;
+  const b = L.cum[Math.min(k, 23)];
+  return L.objetivo * (a + (b - a) * f) / L.cum[23];
+}
+
+function fraccion() {
+  let esp = 0, tot = 0;
+  for (const L of LOCALES) { esp += esperadoDe(L); tot += objetivoDe(L); }
+  return tot ? esp / tot : 0;
+}
+
+// ── día o mes ──────────────────────────────────────────────────────────────
+// Todo lo que se muestra pasa por estos accesores, así cambiar de modo no
+// obliga a tocar el ranking, las placas, los haces y la ficha uno por uno.
+const valorDe = L => (S.modo === 'mes' ? L.mesTotal : L.fact);
+const ticketsDe = L => (S.modo === 'mes' ? L.tkMesTotal : L.tickets);
+const objetivoDe = L => (S.modo === 'mes' ? L.objetivoMes : L.objetivo);
+const esperadoDe = L => (S.modo === 'mes'
+  ? L.objetivo * S.fsumPrevios / 0.9 + esperado(L)
+  : esperado(L));
+
+const valorCadena = () => (S.modo === 'mes' ? S.cadena.mes.monto : S.cadena.hoy.monto);
+const ticketsCadena = () => (S.modo === 'mes' ? S.cadena.mes.tickets : S.cadena.hoy.tickets);
+const objetivoCadena = () => (S.modo === 'mes' ? S.cadena.objetivoMes : S.cadena.objetivoDia);
+const referencia = () => (S.modo === 'mes' ? S.cadena.mesAnterior.monto : S.cadena.ayer.monto);
+
+// Siempre contra lo esperado a esta altura, no contra el objetivo entero: el
+// día 3 del mes nadie puede estar al 100 % y pintarlo todo en rojo no informa.
+function estado(L) {
+  const esp = esperadoDe(L);
+  // el piso se mide contra un día, no contra el período: el 2 % de un mes son
+  // casi dos días enteros y dejaría toda la ciudad en gris hasta el día 3
+  if (esp < L.objetivo * 0.02) return 'quieto';
+  const r = valorDe(L) / esp;
+  if (r >= 1.08) return 'arriba';
+  if (r >= 0.82) return 'ok';
+  return 'abajo';
+}
+
+const COLOR_ESTADO = {
+  arriba: 0x3fc0bc, ok: 0xfae100, abajo: 0xd40f7d, quieto: 0x6d6862,
+};
+const TEXTO_ESTADO = {
+  arriba: 'Arriba de lo esperado', ok: 'En línea', abajo: 'Abajo de lo esperado',
+  quieto: 'Todavía sin movimiento',
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   4 · ESCENA
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const liviano = matchMedia('(max-width:900px)').matches;
+const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const host = document.getElementById('lienzo');
+
+const renderer = new THREE.WebGLRenderer({ antialias: !liviano, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, liviano ? 1.5 : 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.45;
+renderer.shadowMap.enabled = !liviano;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+
+const escena = new THREE.Scene();
+escena.fog = new THREE.FogExp2(0x1a1822, 0.0009);
+
+const camara = new THREE.PerspectiveCamera(46, 1, 1, 4000);
+
+const sol = new THREE.DirectionalLight(0xffffff, 1.2);
+sol.castShadow = !liviano;
+if (!liviano) {
+  sol.shadow.mapSize.set(2048, 2048);
+  const c = sol.shadow.camera;
+  c.left = -300; c.right = 300; c.top = 300; c.bottom = -300; c.near = 1; c.far = 1400;
+  sol.shadow.bias = -0.0006;
+  sol.shadow.normalBias = 0.5;
+}
+escena.add(sol, sol.target);
+
+const cielo = new THREE.HemisphereLight(0x8fb4d8, 0x24201e, 0.5);
+escena.add(cielo);
+
+// De noche una ciudad real es negra. Acá se mira el plano, así que el ambiente
+// la levanta lo suficiente como para leer calles, parques y costa.
+const ambiente = new THREE.AmbientLight(0xa79aff, 0.35);
+escena.add(ambiente);
+
+// Luz de relleno fría desde el otro lado: le da volumen a los edificios de
+// noche, cuando el sol no aporta nada. Sin esto la ciudad es una mancha plana.
+const relleno = new THREE.DirectionalLight(0x4ad7ff, 0.5);
+relleno.position.set(-260, 180, -320);
+escena.add(relleno);
+
+/* ── agua ─────────────────────────────────────────────────────────────────── */
+const agua = new THREE.Mesh(
+  new THREE.PlaneGeometry(5000, 5000),
+  new THREE.MeshStandardMaterial({ color: 0x1b2a5c, roughness: 0.12, metalness: 0.7 })
+);
+agua.rotation.x = -Math.PI / 2;
+agua.position.y = -1.6;
+agua.receiveShadow = false;
+escena.add(agua);
+
+/* ── forma de la ciudad ───────────────────────────────────────────────────── */
+const forma = new THREE.Shape();
+CABA_XZ.forEach(([x, z], i) => (i ? forma.lineTo(x, -z) : forma.moveTo(x, -z)));
+forma.closePath();
+
+const losa = new THREE.Mesh(
+  new THREE.ExtrudeGeometry(forma, { depth: 7, bevelEnabled: false }),
+  new THREE.MeshStandardMaterial({ color: 0x3b3150, roughness: 0.95 })
+);
+losa.geometry.rotateX(-Math.PI / 2);
+losa.geometry.translate(0, -7, 0);   // el espesor va hacia abajo: la ciudad es una isla sobre el río
+escena.add(losa);
+
+/* ── trazado urbano ───────────────────────────────────────────────────────
+   La grilla porteña está girada ~30° respecto del norte. Esa misma grilla
+   define las manzanas pintadas en el suelo Y los lotes donde se paran los
+   edificios: de ahí sale que la ciudad se lea como manzanas y no como cajas
+   desparramadas. PITCH es manzana + calle; cada manzana lleva 2 × 2 lotes. */
+const ANG = 30 * Math.PI / 180;
+const CA = Math.cos(ANG), SA = Math.sin(ANG);
+const PITCH = liviano ? 18 : 11;
+const CALLE = liviano ? 5 : 3.4;
+const LOTE = (PITCH - CALLE) / 2;
+
+function texturaSuelo() {
+  const N = 2048;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  const porUnidad = N / EXT;
+  const aPxM = (x, z) => [((x - CX) / EXT + 0.5) * N, (0.5 + (z - CZ) / EXT) * N];
+  const aPx = (lat, lng) => { const [x, z] = proj(lat, lng); return aPxM(x, z); };
+
+  g.fillStyle = '#5f5758';                              // la manzana
+  g.fillRect(0, 0, N, N);
+
+  g.save();
+  g.translate(N / 2, N / 2);
+  g.rotate(ANG);
+  g.strokeStyle = '#6e666a';                            // la calle
+  g.lineWidth = CALLE * porUnidad;
+  g.beginPath();
+  const paso = PITCH * porUnidad;
+  const hasta = Math.ceil(N * 0.75 / paso);
+  for (let i = -hasta; i <= hasta; i++) {
+    const p = i * paso;
+    g.moveTo(p, -N); g.lineTo(p, N);
+    g.moveTo(-N, p); g.lineTo(N, p);
+  }
+  g.stroke();
+  g.restore();
+
+  // parques
+  for (const [la, ln, r] of PARQUES) {
+    const [px, py] = aPx(la, ln);
+    const rad = r * ESCALA * porUnidad;
+    const grad = g.createRadialGradient(px, py, rad * 0.2, px, py, rad);
+    grad.addColorStop(0, '#5f9145');
+    grad.addColorStop(1, '#4a7637');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(px, py, rad, 0, Math.PI * 2); g.fill();
+  }
+
+  // avenidas
+  g.lineCap = 'round';
+  for (const av of AVENIDAS) {
+    g.strokeStyle = 'rgba(250,225,0,.26)';
+    g.lineWidth = 10;
+    g.beginPath();
+    av.forEach(([la, ln], i) => { const [px, py] = aPx(la, ln); i ? g.lineTo(px, py) : g.moveTo(px, py); });
+    g.stroke();
+    g.strokeStyle = 'rgba(246,242,235,.3)';
+    g.lineWidth = 3.4;
+    g.stroke();
+  }
+
+  // General Paz y la costa: el borde de la ciudad
+  g.strokeStyle = 'rgba(246,242,235,.42)';
+  g.lineWidth = 4.5;
+  g.beginPath();
+  CABA.forEach(([la, ln], i) => { const [px, py] = aPx(la, ln); i ? g.lineTo(px, py) : g.moveTo(px, py); });
+  g.closePath();
+  g.stroke();
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+const geoSuelo = new THREE.ShapeGeometry(forma);
+{
+  const p = geoSuelo.attributes.position, uv = [];
+  for (let i = 0; i < p.count; i++) {
+    uv.push((p.getX(i) - CX) / EXT + 0.5, (p.getY(i) + CZ) / EXT + 0.5);
+  }
+  geoSuelo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geoSuelo.rotateX(-Math.PI / 2);
+}
+const suelo = new THREE.Mesh(geoSuelo, new THREE.MeshStandardMaterial({
+  map: texturaSuelo(), roughness: 0.92, side: THREE.DoubleSide,
+}));
+suelo.position.y = 0.06;
+suelo.receiveShadow = !liviano;
+escena.add(suelo);
+
+/* ── ciudad de relleno ────────────────────────────────────────────────────── */
+function texturaVentanas() {
+  const W = 64, H = 128;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, W, H);
+  for (let fy = 0; fy < 11; fy++) {
+    for (let fx = 0; fx < 4; fx++) {
+      if (Math.random() < 0.42) continue;
+      const a = 0.45 + Math.random() * 0.55;
+      g.fillStyle = Math.random() < 0.12 ? `rgba(255,236,170,${a})` : `rgba(255,214,130,${a})`;
+      g.fillRect(6 + fx * 14, 6 + fy * 11, 7, 6);
+    }
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const TOTAL_EDIF = liviano ? 2400 : 6200;
+const matEdif = new THREE.MeshStandardMaterial({
+  color: 0xffffff, roughness: 0.82, metalness: 0.05,
+  emissive: 0xffc878, emissiveMap: texturaVentanas(), emissiveIntensity: 0,
+});
+const geoCaja = new THREE.BoxGeometry(1, 1, 1);
+geoCaja.translate(0, 0.5, 0);
+const ciudad = new THREE.InstancedMesh(geoCaja, matEdif, TOTAL_EDIF);
+ciudad.castShadow = !liviano;
+ciudad.receiveShadow = !liviano;
+ciudad.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+escena.add(ciudad);
+
+// Techos a dos aguas sobre las casas bajas. Es lo que separa una maqueta de
+// juego de una grilla de cajas grises.
+const matTecho = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
+const geoTecho = new THREE.ConeGeometry(0.72, 1, 4);
+geoTecho.rotateY(Math.PI / 4);
+geoTecho.translate(0, 0.5, 0);
+const techos = new THREE.InstancedMesh(geoTecho, matTecho, TOTAL_EDIF);
+techos.castShadow = !liviano;
+escena.add(techos);
+
+// Zonificación. No es un dato del negocio: es lo que hace que una ciudad se
+// lea de un vistazo — torres en el microcentro, tejidos cálidos alrededor,
+// casas bajas con techo en los barrios y galpones hacia el Riachuelo.
+const ZONAS = {
+  centro:    { tonos: [0x7f8fb0, 0x8a93a8, 0x6f84a0, 0x97a2b8], alto: [10, 46], techo: 0 },
+  urbano:    { tonos: [0xb08f7f, 0xa37f9b, 0x8a7fb0, 0xb0a67f], alto: [5, 20], techo: 0.22 },
+  barrio:    { tonos: [0x8fb08a, 0xb0a67f, 0xc0a890, 0x9ab08f], alto: [3, 8], techo: 0.82 },
+  industria: { tonos: [0x9a9088, 0xa8a096, 0x8c8278], alto: [3, 7], techo: 0.08 },
+};
+
+function zonaDe(pz, dKm) {
+  if (dKm < 1.9) return ZONAS.centro;
+  if (dKm > 2.8 && pz > CZ + 35 && Math.random() < 0.45) return ZONAS.industria;
+  if (dKm < 4.6) return ZONAS.urbano;
+  return ZONAS.barrio;
+}
+
+let LOC_XZ = [];                      // lo llena construirMundo()
+
+function poblar() {
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  const pos = new THREE.Vector3(), esc = new THREE.Vector3();
+  const col = new THREE.Color();
+  // todos los edificios miran a la calle: una sola rotación para toda la ciudad
+  e.set(0, -ANG, 0);
+  q.setFromEuler(e);
+  const R = Math.ceil((Math.hypot(BB_W, BB_H) / 2 + PITCH) / PITCH) * PITCH;
+  let n = 0, t = 0;
+
+  for (let v = -R; v <= R && n < TOTAL_EDIF; v += PITCH) {
+    for (let u = -R; u <= R && n < TOTAL_EDIF; u += PITCH) {
+      // una de cada cuatro manzanas se construye entera, como pasa en serio
+      const manzana = PITCH - CALLE;
+      const lotes = Math.random() < 0.28
+        ? [[0.5, 0.5, manzana * 0.9]]
+        : [[0.25, 0.25, LOTE * 0.86], [0.75, 0.25, LOTE * 0.86],
+           [0.25, 0.75, LOTE * 0.86], [0.75, 0.75, LOTE * 0.86]];
+
+      for (const [fu, fv, base] of lotes) {
+        if (n >= TOTAL_EDIF) break;
+        const lu = u + CALLE / 2 + manzana * fu;
+        const lv = v + CALLE / 2 + manzana * fv;
+        const px = CX + lu * CA - lv * SA;
+        const pz = CZ + lu * SA + lv * CA;
+
+        if (!dentro(px, pz)) continue;
+        if (PQ_XZ.some(([qx, qz, r]) => Math.hypot(px - qx, pz - qz) < r)) continue;
+        if (AV_XZ.some(av => {
+          for (let i = 1; i < av.length; i++) {
+            if (distASegmento(px, pz, av[i - 1][0], av[i - 1][1], av[i][0], av[i][1]) < 4) return true;
+          }
+          return false;
+        })) continue;
+        if (LOC_XZ.some(([lx, lz]) => Math.hypot(px - lx, pz - lz) < 20)) continue;
+
+        const dKm = Math.hypot(px - MC_X, pz - MC_Z) / ESCALA;
+        const Z = zonaDe(pz, dKm);
+        const dens = Math.max(0.5, Math.min(1.5, 1.6 - dKm / 6));
+        let alto = (Z.alto[0] + Math.pow(Math.random(), 1.9) * (Z.alto[1] - Z.alto[0])) * dens;
+        if (Z === ZONAS.centro && Math.random() < 0.12) alto *= 1.8;
+        const ancho = base * (0.86 + Math.random() * 0.22);
+        const fondo = base * (0.86 + Math.random() * 0.22);
+
+        pos.set(px, 0.1, pz);
+        esc.set(ancho, alto, fondo);
+        m.compose(pos, q, esc);
+        ciudad.setMatrixAt(n, m);
+        col.setHex(Z.tonos[(Math.random() * Z.tonos.length) | 0])
+           .multiplyScalar(0.45 + Math.random() * 0.45);
+        ciudad.setColorAt(n, col);
+
+        if (Math.random() < Z.techo && t < TOTAL_EDIF) {
+          pos.set(px, 0.1 + alto, pz);
+          esc.set(ancho, Math.min(ancho, fondo) * (0.3 + Math.random() * 0.25), fondo);
+          m.compose(pos, q, esc);
+          techos.setMatrixAt(t, m);
+          techos.setColorAt(t, col.multiplyScalar(0.7));
+          t++;
+        }
+        n++;
+      }
+    }
+  }
+  ciudad.count = n;
+  techos.count = t;
+  ciudad.instanceMatrix.needsUpdate = true;
+  techos.instanceMatrix.needsUpdate = true;
+  if (ciudad.instanceColor) ciudad.instanceColor.needsUpdate = true;
+  if (techos.instanceColor) techos.instanceColor.needsUpdate = true;
+}
+
+/* ── arbolado ─────────────────────────────────────────────────────────────
+   Los parques eran manchas verdes planas. Con árboles pasan a ser parques. */
+const TOTAL_ARB = liviano ? 200 : 520;
+const geoArbol = new THREE.ConeGeometry(0.62, 1, 6);
+geoArbol.translate(0, 0.5, 0);
+const arboles = new THREE.InstancedMesh(
+  geoArbol,
+  new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
+  TOTAL_ARB
+);
+arboles.castShadow = !liviano;
+escena.add(arboles);
+
+(function plantar() {
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+  const pos = new THREE.Vector3(), esc = new THREE.Vector3(), col = new THREE.Color();
+  const TONOS = [0x4e7a3a, 0x5e8a42, 0x44703a, 0x6b9148];
+  const total = PQ_XZ.reduce((a, p) => a + p[2] * p[2], 0);
+  let n = 0;
+  for (const [qx, qz, r] of PQ_XZ) {
+    const cuantos = Math.round(TOTAL_ARB * (r * r) / total);
+    for (let i = 0; i < cuantos && n < TOTAL_ARB; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const rr = Math.sqrt(Math.random()) * r * 0.92;
+      const px = qx + Math.cos(a) * rr, pz = qz + Math.sin(a) * rr;
+      if (!dentro(px, pz)) continue;
+      const s = 3 + Math.random() * 3.2;
+      pos.set(px, 0.1, pz);
+      esc.set(s, s * 1.5, s);
+      m.compose(pos, q, esc);
+      arboles.setMatrixAt(n, m);
+      col.setHex(TONOS[(Math.random() * TONOS.length) | 0])
+         .multiplyScalar(0.55 + Math.random() * 0.4);
+      arboles.setColorAt(n, col);
+      n++;
+    }
+  }
+  arboles.count = n;
+  arboles.instanceMatrix.needsUpdate = true;
+  if (arboles.instanceColor) arboles.instanceColor.needsUpdate = true;
+})();
+
+/* ════════════════════════════════════════════════════════════════════════════
+   5 · LOS LOCALES
+   ════════════════════════════════════════════════════════════════════════════ */
+
+function texturaCartel(nombre) {
+  const W = 512, H = 128;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#231f20';
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = '#fae100';
+  g.fillRect(0, 0, W, 7);
+  g.fillRect(0, H - 7, W, 7);
+  g.font = '700 56px "Barlow Condensed", sans-serif';
+  g.fillStyle = '#fae100';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  const txt = nombre.toUpperCase();
+  let s = 56;
+  while (g.measureText(txt).width > W - 48 && s > 20) { s -= 2; g.font = `700 ${s}px "Barlow Condensed", sans-serif`; }
+  g.fillText(txt, W / 2, H / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Halo suave detrás del haz. Hace de bloom sin montar un postprocesado entero.
+function texturaBrillo() {
+  const N = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  const grad = g.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.25, 'rgba(255,255,255,.42)');
+  grad.addColorStop(0.6, 'rgba(255,255,255,.1)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, N, N);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const TEX_BRILLO = texturaBrillo();
+
+function texturaEtiqueta() {
+  const cv = document.createElement('canvas');
+  cv.width = 640; cv.height = 200;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return { cv, g: cv.getContext('2d'), tex, ultimo: '' };
+}
+
+function corona(g, x, y, s) {
+  g.fillStyle = '#fae100';
+  g.beginPath();
+  g.moveTo(x, y + s);
+  g.lineTo(x, y + s * 0.22);
+  g.lineTo(x + s * 0.32, y + s * 0.62);
+  g.lineTo(x + s * 0.64, y);
+  g.lineTo(x + s * 0.96, y + s * 0.62);
+  g.lineTo(x + s * 1.28, y + s * 0.22);
+  g.lineTo(x + s * 1.28, y + s);
+  g.closePath();
+  g.fill();
+}
+
+const fmtMoneda = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+const plata = n => '$ ' + fmtMoneda.format(Math.round(n));
+
+// Placa flotante sobre cada local: nombre, facturado, barra del objetivo del
+// día y corona al que va primero. Tamaño fijo en pantalla, así se lee igual
+// desde el panorámico que de cerca.
+function pintarEtiqueta(E, nombre, monto, colorHex, pct, lider) {
+  const clave = nombre + '|' + monto + '|' + pct + '|' + lider;
+  if (E.ultimo === clave) return;
+  E.ultimo = clave;
+  const { g, cv } = E;
+  const W = cv.width, H = cv.height;
+  g.clearRect(0, 0, W, H);
+
+  g.fillStyle = 'rgba(23,21,27,.9)';
+  g.fillRect(0, 0, W, H);
+  g.strokeStyle = colorHex;
+  g.lineWidth = 7;
+  g.strokeRect(3.5, 3.5, W - 7, H - 7);
+
+  let x = 28;
+  if (lider) { corona(g, x, 16, 40); x += 72; }
+
+  g.textAlign = 'left';
+  g.textBaseline = 'alphabetic';
+  g.font = '700 52px "Barlow Condensed", sans-serif';
+  g.fillStyle = '#f4f2ee';
+  g.fillText(nombre.toUpperCase(), x, 64);
+
+  g.font = '700 62px "Barlow Condensed", sans-serif';
+  g.fillStyle = colorHex;
+  g.fillText(plata(monto), 28, 130);
+
+  g.textAlign = 'right';
+  g.font = '700 38px "Barlow Condensed", sans-serif';
+  g.fillStyle = 'rgba(244,242,238,.62)';
+  g.fillText(pct + '%', W - 28, 130);
+
+  const bx = 28, by = 150, bw = W - 56, bh = 24;
+  g.fillStyle = 'rgba(244,242,238,.15)';
+  g.fillRect(bx, by, bw, bh);
+  g.fillStyle = colorHex;
+  g.fillRect(bx, by, bw * Math.max(0, Math.min(1, pct / 100)), bh);
+  if (pct >= 100) {                       // pasó el objetivo: se marca el excedente
+    g.fillStyle = '#f4f2ee';
+    g.fillRect(bx + bw - 5, by, 5, bh);
+  }
+  g.textAlign = 'left';
+  E.tex.needsUpdate = true;
+}
+
+const grupoLocales = new THREE.Group();
+escena.add(grupoLocales);
+const golpes = [];                                     // cajas invisibles para el clic
+
+const matHaz = () => new THREE.MeshBasicMaterial({
+  color: 0xfae100, transparent: true, opacity: 0.16,
+  blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+});
+
+const geoCil = new THREE.CylinderGeometry(1, 1, 1, 14, 1, true);
+geoCil.translate(0, 0.5, 0);
+const geoAro = new THREE.RingGeometry(1, 1.14, 56);
+geoAro.rotateX(-Math.PI / 2);
+
+// El mundo se arma recién cuando llega el primer snapshot: cuántos locales
+// hay, dónde están y cuáles van en el mapa lo decide el server.
+function construirLocales() {
+for (const L of LOCALES.filter(l => l.mapa)) {
+  const [x, z] = proj(L.lat, L.lng);
+  L.wx = x; L.wz = z;
+}
+
+// Casa Temple y Soho están en la misma esquina (Costa Rica 4677 y 4699): a esta
+// escala quedarían uno encima del otro, así que se separan lo justo para poder
+// tocarlos. La dirección real sigue siendo la de la ficha.
+(function separar() {
+  const mapa = LOCALES.filter(L => L.mapa);
+  const MIN = 52;
+  for (let it = 0; it < 60; it++) {
+    let movio = false;
+    for (let i = 0; i < mapa.length; i++) {
+      for (let j = i + 1; j < mapa.length; j++) {
+        const A = mapa[i], B = mapa[j];
+        let dx = B.wx - A.wx, dz = B.wz - A.wz;
+        let d = Math.hypot(dx, dz);
+        if (d >= MIN) continue;
+        if (d < 0.001) { dx = 1; dz = 0; d = 1; }
+        const e = (MIN - d) / 2.0 / d;
+        A.wx -= dx * e; A.wz -= dz * e;
+        B.wx += dx * e; B.wz += dz * e;
+        movio = true;
+      }
+    }
+    if (!movio) break;
+  }
+})();
+
+let idxLocal = 0;
+for (const L of LOCALES) {
+  if (!L.mapa) continue;
+  const g = new THREE.Group();
+  g.position.set(L.wx, 0.12, L.wz);
+  // Soho, Hollywood y Casa Temple están a tres cuadras entre sí, igual que
+  // Monroe y Barrio Chino. Con placas de tamaño fijo se pisarían, así que cada
+  // una cuelga a distinta altura; el orden del array deja a los vecinos en
+  // escalones distintos.
+  const escalon = idxLocal++ % 4;
+
+  const ANCHO = 15, FONDO = 12, ALTO = 19;
+
+  const cuerpo = new THREE.Mesh(
+    new THREE.BoxGeometry(ANCHO, ALTO, FONDO),
+    new THREE.MeshStandardMaterial({ color: 0x2b2730, roughness: 0.78 })
+  );
+  cuerpo.position.y = ALTO / 2;
+  cuerpo.castShadow = !liviano;
+  cuerpo.receiveShadow = !liviano;
+  g.add(cuerpo);
+
+  // planta baja en ink, con la vereda
+  const pb = new THREE.Mesh(
+    new THREE.BoxGeometry(ANCHO + 2.6, 5.4, FONDO + 2.6),
+    new THREE.MeshStandardMaterial({ color: 0x231f20, roughness: 0.6 })
+  );
+  pb.position.y = 2.7;
+  pb.castShadow = !liviano;
+  g.add(pb);
+
+  const vereda = new THREE.Mesh(
+    new THREE.BoxGeometry(ANCHO + 11, 0.5, FONDO + 11),
+    new THREE.MeshStandardMaterial({ color: 0x55504c, roughness: 0.95 })
+  );
+  vereda.position.y = 0.2;
+  vereda.receiveShadow = !liviano;
+  g.add(vereda);
+
+  // cartel luminoso en las cuatro caras, para que se lea desde cualquier ángulo
+  const matCartel = new THREE.MeshStandardMaterial({
+    map: texturaCartel(L.nombre), emissive: 0xfae100,
+    emissiveMap: texturaCartel(L.nombre), emissiveIntensity: 1.25,
+    roughness: 0.5,
+  });
+  L.matCartel = matCartel;
+  const geoCartel = new THREE.PlaneGeometry(ANCHO + 1.4, 4.4);
+  for (let k = 0; k < 4; k++) {
+    const p = new THREE.Mesh(geoCartel, matCartel);
+    const ang = k * Math.PI / 2;
+    const r = (k % 2 ? FONDO : ANCHO) / 2 + 1.5;
+    p.position.set(Math.sin(ang) * r, ALTO - 2.6, Math.cos(ang) * r);
+    p.rotation.y = ang;
+    g.add(p);
+  }
+
+  // haz de facturación: dos cilindros, uno ancho y difuso y otro fino y brillante
+  const hazOut = new THREE.Mesh(geoCil, matHaz());
+  hazOut.scale.set(5.2, 1, 5.2);
+  const hazIn = new THREE.Mesh(geoCil, matHaz());
+  hazIn.material.opacity = 0.5;
+  hazIn.scale.set(1.9, 1, 1.9);
+  const haz = new THREE.Group();
+  haz.position.y = ALTO + 1;
+  haz.add(hazOut, hazIn);
+  g.add(haz);
+
+  const brillo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: TEX_BRILLO, transparent: true, opacity: 0.2,
+    blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false,
+  }));
+  brillo.scale.setScalar(60);
+  brillo.position.y = ALTO + 20;
+  brillo.renderOrder = 2;
+  g.add(brillo);
+
+  const anillo = new THREE.Mesh(geoAro, new THREE.MeshBasicMaterial({
+    color: 0xfae100, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  }));
+  anillo.position.y = 0.6;
+  anillo.scale.setScalar(12);
+  g.add(anillo);
+
+  const E = texturaEtiqueta();
+  const etiqueta = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: E.tex, transparent: true, depthTest: false, opacity: 1,
+    sizeAttenuation: false,              // tamaño fijo en pantalla: se lee de lejos
+  }));
+  etiqueta.scale.set(0.116, 0.0363, 1);
+  etiqueta.position.y = ALTO + 14 + escalon * 23;
+  etiqueta.renderOrder = 10;
+  g.add(etiqueta);
+
+  const golpe = new THREE.Mesh(
+    new THREE.BoxGeometry(ANCHO + 14, ALTO + 26, FONDO + 14),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  golpe.position.y = (ALTO + 26) / 2;
+  golpe.userData.local = L;
+  g.add(golpe);
+  golpes.push(golpe);
+
+  Object.assign(L, {
+    mundo: g, cuerpo, haz, hazOut, hazIn, anillo, brillo, etiqueta, etiquetaCv: E,
+    aroT: 99, alto: ALTO,
+  });
+  grupoLocales.add(g);
+}
+}
+
+function construirMundo() {
+  LOC_XZ = LOCALES.filter(L => L.mapa).map(L => proj(L.lat, L.lng));
+  poblar();
+  construirLocales();
+  construirPanel();
+  // El país se arma aparte porque necesita bajar el contorno. Si tarda o falla,
+  // la ciudad ya está andando: lo único que pasa es que el toggle no aparece.
+  construirPais().then(() => {
+    if (MARCADORES.length) $('vistas').hidden = false;
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   5b · MUNDO PAÍS
+   La cadena entera sobre el mapa de Argentina. Es un mundo aparte y no un
+   alejar la cámara: entre la ciudad y el país hay un factor 230, así que a
+   escala de país los edificios de CABA no llegarían a un píxel.
+   Los nueve locales porteños entran como UN marcador, que además es la puerta
+   a la vista ciudad: a esta escala CABA mide 2 unidades y los nueve quedarían
+   uno encima del otro.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const CENTRO_PAIS = { lat: -38.5, lng: -63.5 };
+const ESCALA_PAIS = 0.151;                         // unidades de mundo por km
+const KM_LNG_PAIS = 111.32 * Math.cos(CENTRO_PAIS.lat * Math.PI / 180);
+const projPais = (lat, lng) => [
+  (lng - CENTRO_PAIS.lng) * KM_LNG_PAIS * ESCALA_PAIS,
+  -(lat - CENTRO_PAIS.lat) * KM_LAT * ESCALA_PAIS,
+];
+
+const grupoPais = new THREE.Group();
+grupoPais.visible = false;
+escena.add(grupoPais);
+
+let MARCADORES = [];
+const golpesPais = [];
+
+// Un marcador puede agrupar varios locales, así que sus números son la suma
+// de los de sus miembros — y salen de los mismos accesores, con lo cual el
+// toggle Día / Mes sigue valiendo igual acá.
+const valorM = M => M.miembros.reduce((a, L) => a + valorDe(L), 0);
+const objetivoM = M => M.miembros.reduce((a, L) => a + objetivoDe(L), 0);
+const esperadoM = M => M.miembros.reduce((a, L) => a + esperadoDe(L), 0);
+const ticketsM = M => M.miembros.reduce((a, L) => a + ticketsDe(L), 0);
+
+function estadoM(M) {
+  const esp = esperadoM(M);
+  const piso = M.miembros.reduce((a, L) => a + L.objetivo, 0) * 0.02;
+  if (esp < piso) return 'quieto';
+  const r = valorM(M) / esp;
+  if (r >= 1.08) return 'arriba';
+  if (r >= 0.82) return 'ok';
+  return 'abajo';
+}
+
+async function construirPais() {
+  let geo;
+  try {
+    geo = await fetch('argentina.json').then(r => r.json());
+  } catch (err) {
+    console.error('Sin el contorno del país no hay vista país:', err);
+    return;                       // la vista ciudad sigue funcionando igual
+  }
+
+  const matTierra = new THREE.MeshStandardMaterial({ color: 0x3c3650, roughness: 0.95 });
+  const matTapa = new THREE.MeshStandardMaterial({
+    color: 0x645c74, roughness: 0.92, side: THREE.DoubleSide,
+  });
+
+  for (const anillo of geo.anillos) {
+    const forma = new THREE.Shape();
+    anillo.forEach(([ln, la], i) => {
+      const [x, z] = projPais(la, ln);
+      i ? forma.lineTo(x, -z) : forma.moveTo(x, -z);
+    });
+    forma.closePath();
+
+    const losaP = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(forma, { depth: 5, bevelEnabled: false }), matTierra);
+    losaP.geometry.rotateX(-Math.PI / 2);
+    losaP.geometry.translate(0, -5, 0);          // el espesor va hacia abajo
+    grupoPais.add(losaP);
+
+    const tapa = new THREE.Mesh(new THREE.ShapeGeometry(forma), matTapa);
+    tapa.geometry.rotateX(-Math.PI / 2);
+    tapa.position.y = 0.06;
+    tapa.receiveShadow = !liviano;
+    grupoPais.add(tapa);
+  }
+
+  const caba = LOCALES.filter(L => L.mapa);
+  const lista = [];
+  if (caba.length) {
+    lista.push({
+      id: '__caba', nombre: 'Buenos Aires', sub: `${caba.length} locales`,
+      lat: -34.60, lng: -58.42, miembros: caba, esCiudad: true,
+    });
+  }
+  for (const L of LOCALES.filter(l => !l.mapa && l.lat != null)) {
+    lista.push({ id: L.id, nombre: L.nombre, sub: L.barrio, lat: L.lat, lng: L.lng,
+                 miembros: [L], local: L });
+  }
+
+  for (const M of lista) {
+    const [x, z] = projPais(M.lat, M.lng);
+    M.wx = x; M.wz = z;
+  }
+
+  // Maschwitz está a 50 km de CABA: a esta escala son 7 unidades y el marcador
+  // queda abajo del de Buenos Aires. Se separan lo justo para poder tocarlos,
+  // igual que en la ciudad; la ficha sigue diciendo la dirección real.
+  for (let it = 0; it < 60; it++) {
+    let movio = false;
+    for (let i = 0; i < lista.length; i++) {
+      for (let j = i + 1; j < lista.length; j++) {
+        const A = lista[i], B = lista[j];
+        let dx = B.wx - A.wx, dz = B.wz - A.wz;
+        let d = Math.hypot(dx, dz);
+        if (d >= 24) continue;
+        if (d < 0.001) { dx = 1; dz = 0; d = 1; }
+        const e = (24 - d) / 2 / d;
+        A.wx -= dx * e; A.wz -= dz * e;
+        B.wx += dx * e; B.wz += dz * e;
+        movio = true;
+      }
+    }
+    if (!movio) break;
+  }
+
+  MARCADORES = lista.map((M, i) => {
+    const x = M.wx, z = M.wz;
+    M.aroT = 99; M.hazAlto = 0; M.pulso = 0;
+
+    const g = new THREE.Group();
+    g.position.set(x, 0.1, z);
+
+    const r = M.esCiudad ? 6 : 4;
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(r, r * 1.2, 3, 16),
+      new THREE.MeshStandardMaterial({ color: 0x231f20, roughness: 0.6 })
+    );
+    base.position.y = 1.5;
+    base.castShadow = !liviano;
+    g.add(base);
+
+    const hazOut = new THREE.Mesh(geoCil, matHaz());
+    hazOut.scale.set(r * 0.62, 1, r * 0.62);
+    const hazIn = new THREE.Mesh(geoCil, matHaz());
+    hazIn.material.opacity = 0.5;
+    hazIn.scale.set(r * 0.24, 1, r * 0.24);
+    const haz = new THREE.Group();
+    haz.position.y = 3;
+    haz.add(hazOut, hazIn);
+    g.add(haz);
+
+    const anillo = new THREE.Mesh(geoAro, new THREE.MeshBasicMaterial({
+      color: 0xfae100, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    }));
+    anillo.position.y = 0.5;
+    anillo.scale.setScalar(r * 1.6);
+    g.add(anillo);
+
+    const brillo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: TEX_BRILLO, transparent: true, opacity: 0.2,
+      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false,
+    }));
+    brillo.scale.setScalar(30);
+    brillo.position.y = 14;
+    brillo.renderOrder = 2;
+    g.add(brillo);
+
+    const E = texturaEtiqueta();
+    const etiqueta = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: E.tex, transparent: true, depthTest: false, opacity: 1, sizeAttenuation: false,
+    }));
+    etiqueta.scale.set(0.116, 0.0363, 1);
+    etiqueta.position.y = 9 + (i % 4) * 11;
+    etiqueta.renderOrder = 10;
+    g.add(etiqueta);
+
+    const golpe = new THREE.Mesh(
+      new THREE.BoxGeometry(20, 44, 20), new THREE.MeshBasicMaterial({ visible: false }));
+    golpe.position.y = 22;
+    golpe.userData.marcador = M;
+    g.add(golpe);
+    golpesPais.push(golpe);
+
+    Object.assign(M, { grupo: g, haz, hazOut, hazIn, anillo, brillo, etiqueta, etiquetaCv: E });
+    grupoPais.add(g);
+    return M;
+  });
+}
+
+// Pulso de un marcador cuando entra una venta de alguno de sus locales.
+function pulsoPais(L) {
+  const M = MARCADORES.find(m => m.miembros.includes(L));
+  if (!M) return;
+  M.pulso = 1;
+  M.aroT = 0;
+}
+
+function animarPais(dt, noche, refrescar) {
+  let lider = null;
+  for (const M of MARCADORES) if (!lider || valorM(M) > valorM(lider)) lider = M;
+
+  for (const M of MARCADORES) {
+    const col = COLOR_ESTADO[estadoM(M)];
+    M.pulso = Math.max(0, M.pulso - dt * 2.6);
+    const p = quieto ? 0 : Math.sin(M.pulso * Math.PI);
+
+    const objetivo = 10 + Math.min(1.3, valorM(M) / Math.max(1, objetivoM(M))) * 62;
+    M.hazAlto += (objetivo - M.hazAlto) * (1 - Math.exp(-3 * dt));
+    M.haz.scale.y = Math.max(0.5, M.hazAlto);
+    M.hazOut.material.color.setHex(col);
+    M.hazIn.material.color.setHex(col);
+    M.hazOut.material.opacity = 0.1 + noche * 0.1 + p * 0.1;
+    M.hazIn.material.opacity = 0.34 + noche * 0.2 + p * 0.25;
+
+    M.aroT += dt;
+    if (M.aroT < 1.1) {
+      const u = M.aroT / 1.1;
+      M.anillo.scale.setScalar((M.esCiudad ? 9 : 6) + u * 22);
+      M.anillo.material.opacity = (1 - u) * 0.55;
+      M.anillo.material.color.setHex(col);
+    } else if (M.anillo.material.opacity !== 0) {
+      M.anillo.material.opacity = 0;
+    }
+
+    M.brillo.material.color.setHex(col);
+    M.brillo.material.opacity = 0.1 + noche * 0.13 + p * 0.22;
+    M.brillo.scale.setScalar(26 + M.hazAlto * 0.26 + p * 12);
+    M.brillo.position.y = 3 + M.hazAlto * 0.45;
+
+    if (refrescar) {
+      pintarEtiqueta(M.etiquetaCv, M.nombre, valorM(M), hex(col),
+        Math.round(valorM(M) / Math.max(1, objetivoM(M)) * 100), M === lider);
+    }
+  }
+}
+
+function aro(L) { L.aroT = 0; }
+
+/* ── gente ────────────────────────────────────────────────────────────────── */
+const MAX_GENTE = liviano ? 40 : 110;
+const geoGente = new THREE.CapsuleGeometry(0.85, 1.7, 3, 7);
+geoGente.translate(0, 1.7, 0);
+const gente = new THREE.InstancedMesh(
+  geoGente,
+  new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 }),
+  MAX_GENTE
+);
+gente.castShadow = false;
+gente.count = MAX_GENTE;
+escena.add(gente);
+
+const PERSONAS = Array.from({ length: MAX_GENTE }, () => ({ vivo: false }));
+const TONOS = [0xf4f2ee, 0x3fc0bc, 0xd40f7d, 0xfae100, 0x9a948c];
+const mTmp = new THREE.Matrix4(), vTmp = new THREE.Vector3(), qTmp = new THREE.Quaternion(),
+      eTmp = new THREE.Euler(), cTmp = new THREE.Color(), UNO = new THREE.Vector3(1, 1, 1);
+
+mTmp.makeScale(0, 0, 0);
+for (let i = 0; i < MAX_GENTE; i++) gente.setMatrixAt(i, mTmp);
+
+function persona(L) {
+  const p = PERSONAS.find(p => !p.vivo);
+  if (!p) return;
+  const ang = Math.random() * Math.PI * 2;
+  const r = 24 + Math.random() * 16;
+  p.vivo = true;
+  p.x = L.wx + Math.cos(ang) * r;
+  p.z = L.wz + Math.sin(ang) * r;
+  p.dx = L.wx + (Math.random() - 0.5) * 6;
+  p.dz = L.wz + (Math.random() - 0.5) * 6;
+  p.t = 0;
+  p.vel = 9 + Math.random() * 5;
+  p.tono = TONOS[(Math.random() * TONOS.length) | 0];
+}
+
+function moverGente(dt) {
+  for (let i = 0; i < PERSONAS.length; i++) {
+    const p = PERSONAS[i];
+    if (!p.vivo) { mTmp.makeScale(0, 0, 0); gente.setMatrixAt(i, mTmp); continue; }
+    const dx = p.dx - p.x, dz = p.dz - p.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1.4) { p.vivo = false; mTmp.makeScale(0, 0, 0); gente.setMatrixAt(i, mTmp); continue; }
+    const paso = Math.min(d, p.vel * dt);
+    p.x += dx / d * paso;
+    p.z += dz / d * paso;
+    p.t += dt;
+    const bob = Math.abs(Math.sin(p.t * 9)) * 0.5;
+    eTmp.set(0, Math.atan2(dx, dz), Math.sin(p.t * 9) * 0.1);
+    qTmp.setFromEuler(eTmp);
+    vTmp.set(p.x, 0.5 + bob, p.z);
+    mTmp.compose(vTmp, qTmp, UNO);
+    gente.setMatrixAt(i, mTmp);
+    gente.setColorAt(i, cTmp.setHex(p.tono));
+  }
+  gente.instanceMatrix.needsUpdate = true;
+  if (gente.instanceColor) gente.instanceColor.needsUpdate = true;
+}
+
+/* ── tránsito ─────────────────────────────────────────────────────────────
+   Autos recorriendo las avenidas. No miden nada ni se guardan en ningún lado:
+   están para que la ciudad no parezca una maqueta congelada entre venta y
+   venta, que es la mitad del tiempo. De noche se leen como luces moviéndose. */
+const VIAS = AV_XZ.map(pts => {
+  const segs = [];
+  let largo = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1], [bx, bz] = pts[i];
+    const d = Math.hypot(bx - ax, bz - az);
+    if (d < 0.01) continue;
+    segs.push({ ax, az, bx, bz, d, acum: largo });
+    largo += d;
+  }
+  return { segs, largo };
+}).filter(v => v.largo > 1);
+
+function puntoEnVia(via, s) {
+  s = ((s % via.largo) + via.largo) % via.largo;
+  for (const g of via.segs) {
+    if (s <= g.acum + g.d) {
+      const t = (s - g.acum) / g.d;
+      return {
+        x: g.ax + (g.bx - g.ax) * t, z: g.az + (g.bz - g.az) * t,
+        dx: (g.bx - g.ax) / g.d, dz: (g.bz - g.az) / g.d,
+      };
+    }
+  }
+  const g = via.segs[via.segs.length - 1];
+  return { x: g.bx, z: g.bz, dx: (g.bx - g.ax) / g.d, dz: (g.bz - g.az) / g.d };
+}
+
+const TOTAL_AUTOS = liviano ? 45 : 120;
+const TONOS_AUTO = [0xfff3c4, 0xff6b5f, 0x6fe3ff, 0xfae100, 0xf4f2ee, 0xd40f7d, 0x9aa6ff];
+const matAutos = new THREE.MeshBasicMaterial({ transparent: true, opacity: 1 });
+const geoAuto = new THREE.BoxGeometry(1.5, 1.2, 3.6);
+geoAuto.translate(0, 0.6, 0);
+const autos = new THREE.InstancedMesh(geoAuto, matAutos, TOTAL_AUTOS);
+escena.add(autos);
+
+const AUTOS = Array.from({ length: TOTAL_AUTOS }, () => {
+  const vi = (Math.random() * VIAS.length) | 0;
+  return {
+    vi, s: Math.random() * VIAS[vi].largo, dir: Math.random() < 0.5 ? 1 : -1,
+    vel: 14 + Math.random() * 13,
+    tono: TONOS_AUTO[(Math.random() * TONOS_AUTO.length) | 0],
+  };
+});
+
+function moverAutos(dt) {
+  for (let i = 0; i < AUTOS.length; i++) {
+    const a = AUTOS[i], via = VIAS[a.vi];
+    a.s += a.dir * a.vel * dt;
+    const p = puntoEnVia(via, a.s);
+    const lado = a.dir * 1.5;
+    eTmp.set(0, Math.atan2(p.dx * a.dir, p.dz * a.dir), 0);
+    qTmp.setFromEuler(eTmp);
+    vTmp.set(p.x - p.dz * lado, 0.35, p.z + p.dx * lado);
+    mTmp.compose(vTmp, qTmp, UNO);
+    autos.setMatrixAt(i, mTmp);
+    autos.setColorAt(i, cTmp.setHex(a.tono));
+  }
+  autos.instanceMatrix.needsUpdate = true;
+  if (autos.instanceColor) autos.instanceColor.needsUpdate = true;
+}
+
+/* ── carteles de monto que suben en cada venta ────────────────────────────── */
+const CARTELES = Array.from({ length: liviano ? 10 : 26 }, () => {
+  const cv = document.createElement('canvas');
+  cv.width = 320; cv.height = 90;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthTest: false, opacity: 0,
+  }));
+  sp.scale.set(30, 8.4, 1);
+  sp.renderOrder = 11;
+  sp.visible = false;
+  escena.add(sp);
+  return { sp, tex, g: cv.getContext('2d'), cv, t: 99, x: 0, y: 0, z: 0 };
+});
+
+function cartel(L, monto) {
+  const c = CARTELES.find(c => c.t > 1.5);
+  if (!c) return;
+  const { g, cv } = c;
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.font = '700 62px "Barlow Condensed", sans-serif';
+  g.textBaseline = 'middle';
+  g.textAlign = 'center';
+  g.lineWidth = 7;
+  g.strokeStyle = 'rgba(23,21,27,.85)';
+  g.strokeText('+' + plata(monto), cv.width / 2, cv.height / 2);
+  g.fillStyle = '#fae100';
+  g.fillText('+' + plata(monto), cv.width / 2, cv.height / 2);
+  c.tex.needsUpdate = true;
+  c.t = 0;
+  c.x = L.wx + (Math.random() - 0.5) * 10;
+  c.y = L.alto + 5;
+  c.z = L.wz + (Math.random() - 0.5) * 10;
+  c.sp.visible = true;
+}
+
+/* ── monedas ──────────────────────────────────────────────────────────────
+   Cada ticket escupe una moneda que sale para arriba y cae. Es puro adorno,
+   pero es lo que hace que una venta se *sienta* como algo que pasó. */
+function texturaMoneda() {
+  const N = 128;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  g.beginPath(); g.arc(N / 2, N / 2, N / 2 - 7, 0, Math.PI * 2);
+  g.fillStyle = '#fae100'; g.fill();
+  g.lineWidth = 8; g.strokeStyle = '#bfa800'; g.stroke();
+  g.fillStyle = '#7d6d00';
+  g.font = '700 80px "Barlow Condensed", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('$', N / 2, N / 2 + 5);
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const TEX_MONEDA = texturaMoneda();
+
+const MONEDAS = Array.from({ length: liviano ? 10 : 26 }, () => {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: TEX_MONEDA, transparent: true, depthTest: false, opacity: 0,
+  }));
+  sp.scale.set(7, 7, 1);
+  sp.renderOrder = 12;
+  sp.visible = false;
+  escena.add(sp);
+  return { sp, t: 99, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+});
+
+function moneda(L) {
+  const m = MONEDAS.find(m => m.t > 1.3);
+  if (!m) return;
+  const a = Math.random() * Math.PI * 2;
+  m.t = 0;
+  m.x = L.wx + (Math.random() - 0.5) * 8;
+  m.y = L.alto + 3;
+  m.z = L.wz + (Math.random() - 0.5) * 8;
+  m.vx = Math.cos(a) * 9; m.vz = Math.sin(a) * 9;
+  m.vy = 34 + Math.random() * 12;
+  m.sp.visible = true;
+}
+
+function moverMonedas(dt) {
+  for (const m of MONEDAS) {
+    if (m.t > 1.3) { if (m.sp.visible) m.sp.visible = false; continue; }
+    m.t += dt;
+    m.vy -= 58 * dt;
+    m.x += m.vx * dt; m.y += m.vy * dt; m.z += m.vz * dt;
+    m.sp.position.set(m.x, m.y, m.z);
+    m.sp.material.rotation += dt * 7;
+    const u = m.t / 1.3;
+    m.sp.material.opacity = Math.max(0, 1 - u * u);
+  }
+}
+
+/* ── confeti ──────────────────────────────────────────────────────────────
+   Estalla una sola vez por día, cuando un local pasa su objetivo. Que el
+   momento tenga un festejo es justamente lo que lo vuelve un objetivo. */
+const MAX_CONF = liviano ? 60 : 170;
+const TONOS_CONF = [0xfae100, 0xd40f7d, 0x3fc0bc, 0xf4f2ee, 0xffa23f];
+const confeti = new THREE.InstancedMesh(
+  new THREE.BoxGeometry(1.9, 1.9, 0.35),
+  new THREE.MeshBasicMaterial({ transparent: true }),
+  MAX_CONF
+);
+escena.add(confeti);
+const CONF = Array.from({ length: MAX_CONF }, () => ({ vivo: false }));
+
+function festejar(cx, cy, cz) {
+  let n = 0;
+  for (const c of CONF) {
+    if (c.vivo) continue;
+    const a = Math.random() * Math.PI * 2, v = 18 + Math.random() * 26;
+    c.vivo = true; c.t = 0; c.vida = 2.2 + Math.random() * 1.2;
+    c.x = cx; c.y = cy; c.z = cz;
+    c.vx = Math.cos(a) * v; c.vz = Math.sin(a) * v; c.vy = 38 + Math.random() * 26;
+    c.rx = Math.random() * 6; c.ry = Math.random() * 6;
+    c.vrx = (Math.random() - 0.5) * 14; c.vry = (Math.random() - 0.5) * 14;
+    c.tono = TONOS_CONF[(Math.random() * TONOS_CONF.length) | 0];
+    if (++n >= 75) break;
+  }
+}
+
+function moverConfeti(dt) {
+  for (let i = 0; i < CONF.length; i++) {
+    const c = CONF[i];
+    if (!c.vivo) { mTmp.makeScale(0, 0, 0); confeti.setMatrixAt(i, mTmp); continue; }
+    c.t += dt;
+    c.vy -= 52 * dt;
+    c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt;
+    c.vx *= 1 - 1.1 * dt; c.vz *= 1 - 1.1 * dt;
+    if (c.t > c.vida || c.y < 0.6) {
+      c.vivo = false;
+      mTmp.makeScale(0, 0, 0); confeti.setMatrixAt(i, mTmp);
+      continue;
+    }
+    c.rx += c.vrx * dt; c.ry += c.vry * dt;
+    eTmp.set(c.rx, c.ry, 0);
+    qTmp.setFromEuler(eTmp);
+    vTmp.set(c.x, c.y, c.z);
+    mTmp.compose(vTmp, qTmp, UNO);
+    confeti.setMatrixAt(i, mTmp);
+    confeti.setColorAt(i, cTmp.setHex(c.tono));
+  }
+  confeti.instanceMatrix.needsUpdate = true;
+  if (confeti.instanceColor) confeti.instanceColor.needsUpdate = true;
+}
+
+/* ── sonido ───────────────────────────────────────────────────────────────
+   Sintetizado con WebAudio, sin un solo archivo. Arranca apagado: un tablero
+   que empieza a hacer ruido solo es un tablero que alguien apaga. */
+let audioCtx = null, audioOn = false, ultimoBlip = 0;
+
+function nota(f, t0, dur, vol) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(f, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+
+function sonar(tipo) {
+  if (!audioOn || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  if (tipo === 'objetivo') {
+    [659, 784, 988, 1319].forEach((f, i) => nota(f, t0 + i * 0.09, 0.22, 0.06));
+    return;
+  }
+  if (performance.now() - ultimoBlip < 90) return;   // en ×300 serían 10 por segundo
+  ultimoBlip = performance.now();
+  nota(1047, t0, 0.06, 0.035);
+  nota(1568, t0 + 0.055, 0.1, 0.03);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   6 · CÁMARA
+   ════════════════════════════════════════════════════════════════════════════ */
+
+// Los nueve locales se concentran entre Belgrano y La Boca, así que la vista
+// panorámica apunta ahí y no al centro geométrico de la ciudad.
+const VISTAS = {
+  // El país se mira casi desde arriba: es un mapa, no una maqueta.
+  ciudad: { x: 24, z: -14, elev: liviano ? 0.92 : 0.72, azim: -0.55, ancho: 500, alto: 430 },
+  pais:   { x: 0,  z: 6,   elev: liviano ? 1.3 : 1.22,  azim: -0.1,  ancho: 330, alto: 660 },
+};
+const VISTA = { ...VISTAS.ciudad, dist: 600 };
+
+const CAM = {
+  obj: new THREE.Vector3(VISTA.x, 0, VISTA.z), dist: VISTA.dist, azim: -0.55, elev: VISTA.elev,
+  dObj: new THREE.Vector3(VISTA.x, 0, VISTA.z), dDist: VISTA.dist, dAzim: -0.55, dElev: VISTA.elev,
+};
+
+function irA(x, z, dist, elev) {
+  CAM.dObj.set(x, 0, z);
+  CAM.dDist = dist;
+  if (elev !== undefined) CAM.dElev = elev;
+}
+
+function panoramica() {
+  CAM.dObj.set(VISTA.x, 0, VISTA.z);
+  CAM.dDist = VISTA.dist;
+  CAM.dElev = VISTA.elev;
+}
+
+let ultimaInteraccion = performance.now();
+const tocado = () => { ultimaInteraccion = performance.now(); };
+
+(function controles() {
+  const el = renderer.domElement;
+  let arrastre = null;
+  el.style.touchAction = 'none';
+  el.addEventListener('contextmenu', e => e.preventDefault());
+
+  el.addEventListener('pointerdown', e => {
+    tocado();
+    el.setPointerCapture(e.pointerId);
+    arrastre = {
+      id: e.pointerId, x: e.clientX, y: e.clientY,
+      x0: e.clientX, y0: e.clientY, t0: performance.now(),
+      pan: e.button === 2 || e.shiftKey, movido: 0,
+    };
+  });
+
+  el.addEventListener('pointermove', e => {
+    if (!arrastre || e.pointerId !== arrastre.id) return;
+    const dx = e.clientX - arrastre.x, dy = e.clientY - arrastre.y;
+    arrastre.x = e.clientX; arrastre.y = e.clientY;
+    arrastre.movido += Math.abs(dx) + Math.abs(dy);
+    if (arrastre.pan) {
+      const k = CAM.dDist * 0.0016;
+      const s = Math.sin(CAM.azim), c = Math.cos(CAM.azim);
+      CAM.dObj.x -= (dx * c - dy * s) * k;
+      CAM.dObj.z -= (dx * s + dy * c) * k;
+    } else {
+      CAM.dAzim -= dx * 0.005;
+      CAM.dElev = Math.max(0.1, Math.min(1.45, CAM.dElev + dy * 0.004));
+    }
+  });
+
+  el.addEventListener('pointerup', e => {
+    if (!arrastre || e.pointerId !== arrastre.id) return;
+    const corto = arrastre.movido < 8 && performance.now() - arrastre.t0 < 500;
+    const pan = arrastre.pan;
+    arrastre = null;
+    if (corto && !pan) clicEnMundo(e);
+  });
+
+  el.addEventListener('pointercancel', () => { arrastre = null; });
+
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    tocado();
+    CAM.dDist = Math.max(45, Math.min(1600, CAM.dDist * (1 + Math.sign(e.deltaY) * 0.12)));
+  }, { passive: false });
+
+  // pinch
+  const toques = new Map();
+  let d0 = 0, dist0 = 0;
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      d0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                      e.touches[0].clientY - e.touches[1].clientY);
+      dist0 = CAM.dDist;
+      arrastre = null;
+    }
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && d0) {
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                           e.touches[0].clientY - e.touches[1].clientY);
+      CAM.dDist = Math.max(45, Math.min(1600, dist0 * d0 / d));
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', () => { d0 = 0; toques.clear(); }, { passive: true });
+})();
+
+const rayo = new THREE.Raycaster();
+const pt = new THREE.Vector2();
+
+function clicEnMundo(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  pt.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+  pt.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+  rayo.setFromCamera(pt, camara);
+  if (S.vista === 'pais') {
+    const hit = rayo.intersectObjects(golpesPais, false)[0];
+    if (!hit) return seleccionar(null);
+    const M = hit.object.userData.marcador;
+    // Buenos Aires no se selecciona: se entra
+    if (M.esCiudad) return mostrarVista('ciudad');
+    return seleccionar(M.local);
+  }
+  const hit = rayo.intersectObjects(golpes, false)[0];
+  seleccionar(hit ? hit.object.userData.local : null);
+}
+
+function seleccionar(L) {
+  tocado();
+  S.sel = L;
+  if (L) {
+    const M = S.vista === 'pais' ? MARCADORES.find(m => m.local === L) : null;
+    // bien arriba: en el centro las torres tapan el local
+    if (M) irA(M.wx, M.wz, 190, 0.95);
+    else if (L.wx !== undefined) irA(L.wx, L.wz, 115, 0.78);
+    // la ficha aparece arriba de todo: si el panel quedó scrolleado, no se ve
+    const panel = document.getElementById('datos');
+    panel.classList.remove('plegada');
+    document.getElementById('plegar').textContent = '— Panel';
+    panel.scrollTop = 0;
+  } else {
+    panoramica();
+  }
+  pintarDetalle();
+  for (const f of filas) {
+    const suyo = f.L ? f.L === L : !!(f.M && f.M.local === L);
+    f.el.setAttribute('aria-pressed', String(suyo));
+  }
+}
+
+/* ── ciudad o país ──────────────────────────────────────────────────────────
+   Dos mundos a escalas distintas, no un alejar la cámara. Se prende uno y se
+   apaga el otro; el panel de datos es el mismo porque los totales de la cadena
+   no cambian: lo que cambia es cómo se agrupan. */
+const OBJ_CIUDAD = () => [losa, suelo, ciudad, techos, arboles, autos, gente, grupoLocales];
+
+// Monedas, carteles y gente quedan en coordenadas de la ciudad: si están a
+// mitad de animación cuando se cambia de vista, se ven flotando sobre el mapa
+// del país. Se cortan en seco.
+function limpiarEfectos() {
+  for (const m of MONEDAS) { m.t = 99; m.sp.visible = false; }
+  for (const c of CARTELES) { c.t = 99; c.sp.visible = false; }
+  for (const c of CONF) c.vivo = false;
+  for (const p of PERSONAS) p.vivo = false;
+  for (const L of LOCALES) L.aroT = 99;
+  for (const M of MARCADORES) M.aroT = 99;
+}
+
+function mostrarVista(cual) {
+  if (S.vista === cual || !MARCADORES.length) return;
+  S.vista = cual;
+  limpiarEfectos();
+  const enCiudad = cual === 'ciudad';
+  for (const o of OBJ_CIUDAD()) o.visible = enCiudad;
+  grupoPais.visible = !enCiudad;
+  for (const b of $('vistas').querySelectorAll('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.vista === cual));
+  }
+  $('tarjResto').hidden = !enCiudad;
+  Object.assign(VISTA, VISTAS[cual]);
+  CAM.dAzim = VISTA.azim;
+  medir();
+  construirRanking();
+  seleccionar(null);
+  pintarHUD();
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════════
+   7 · HUD
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hhmm = h => String(Math.floor(h) % 24).padStart(2, '0') + ':' +
+  String(Math.floor((h % 1) * 60)).padStart(2, '0');
+const hex = n => '#' + n.toString(16).padStart(6, '0');
+
+const filas = [];
+const rfilas = [];
+const tics = [];
+
+// En ciudad el ranking son los locales de CABA; en país, los marcadores, con
+// Buenos Aires contando como uno solo. Cada fila guarda el local o el
+// marcador, y los cuatro helpers de abajo resuelven de dónde salen sus números.
+const filaValor = f => (f.M ? valorM(f.M) : valorDe(f.L));
+const filaEsperado = f => (f.M ? esperadoM(f.M) : esperadoDe(f.L));
+const filaEstado = f => (f.M ? estadoM(f.M) : estado(f.L));
+const filaTickets = f => (f.M ? ticketsM(f.M) : ticketsDe(f.L));
+
+function construirRanking() {
+  $('rank').textContent = '';
+  filas.length = 0;
+  const items = S.vista === 'pais'
+    ? MARCADORES.map(M => ({ M, nombre: M.nombre, sub: M.sub }))
+    : LOCALES.filter(l => l.mapa).map(L => ({ L, nombre: L.nombre }));
+
+  for (const it of items) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'fila';
+    b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = `<div class="p"></div><div class="n">${esc(it.nombre)}</div><div class="m num"></div>
+      <div class="barra"><i></i></div>
+      <div class="pc"><b></b><span></span></div>`;
+    b.addEventListener('click', () => {
+      if (it.M && it.M.esCiudad) return mostrarVista('ciudad');
+      const L = it.M ? it.M.local : it.L;
+      seleccionar(S.sel === L ? null : L);
+    });
+    $('rank').appendChild(b);
+    filas.push({
+      L: it.L, M: it.M, el: b, p: b.querySelector('.p'), m: b.querySelector('.m'),
+      i: b.querySelector('.barra i'), pc: b.querySelector('.pc b'), es: b.querySelector('.pc span'),
+    });
+  }
+  $('rotRank').textContent = S.vista === 'pais'
+    ? 'Ranking · toda la cadena' : 'Ranking · Ciudad de Buenos Aires';
+  tOrden = 0;
+}
+
+function construirPanel() {
+construirRanking();
+
+// feed
+for (let i = 0; i < 12; i++) {
+  const d = document.createElement('div');
+  d.className = 'tic vacio';
+  d.innerHTML = '<div class="t">—</div><div class="l">—</div><div class="v num">—</div>';
+  $('feed').appendChild(d);
+  tics.push({ el: d, t: d.querySelector('.t'), l: d.querySelector('.l'), v: d.querySelector('.v') });
+}
+
+// resto del país
+for (const L of LOCALES.filter(l => !l.mapa)) {
+  const d = document.createElement('div');
+  d.className = 'rfila';
+  d.innerHTML = `<span>${esc(L.nombre)}</span><b class="num">—</b>`;
+  $('resto').appendChild(d);
+  rfilas.push({ L, b: d.querySelector('b') });
+}
+{
+  const d = document.createElement('div');
+  d.className = 'rfila';
+  d.style.borderTopColor = 'var(--linea-fuerte)';
+  d.innerHTML = '<span style="color:var(--paper)">Subtotal</span><b class="num" id="restoTot">—</b>';
+  $('resto').appendChild(d);
+}
+EN_MAPA = LOCALES.filter(l => l.mapa);
+for (const _ of EN_MAPA) $('telePuntos').appendChild(document.createElement('i'));
+}
+
+let tOrden = 0, rankCongelado = false;
+$('rank').addEventListener('pointerenter', () => { rankCongelado = true; });
+$('rank').addEventListener('pointerleave', () => { rankCongelado = false; });
+
+const spark = $('spark');
+const sg = spark.getContext('2d');
+
+// En día son las 24 horas del día comercial; en mes, los días del mes, con el
+// día de hoy todavía en curso.
+function pintarSpark(L) {
+  const W = spark.width, H = spark.height;
+  sg.clearRect(0, 0, W, H);
+  if (!L) return;
+  const mes = S.modo === 'mes';
+  const hoy = S.fecha.getDate();
+  const n = mes ? S.diasMes : 24;
+  // los arrays ya vienen con el día de hoy adentro y el stream los va sumando
+  const vals = mes
+    ? Array.from({ length: n }, (_, i) => L.histMes[i] || 0)
+    : ORDEN.map(h => L.hist[h] || 0);
+  const cursor = mes ? (hoy - 1) + posDia(S.hora) / 24 : posDia(S.hora);
+  const max = Math.max(1, ...vals);
+  const w = W / n;
+  const col = hex(COLOR_ESTADO[estado(L)]);
+  for (let k = 0; k < n; k++) {
+    const alto = (vals[k] / max) * (H - 10);
+    const pasada = k < cursor;
+    sg.fillStyle = pasada ? col : 'rgba(244,242,238,.12)';
+    sg.fillRect(k * w + 1.5, H - alto, Math.max(1.5, w - 3), Math.max(pasada ? 2 : 1, alto));
+  }
+  sg.fillStyle = '#f4f2ee';
+  sg.fillRect(cursor * w, 0, 1.5, H);
+}
+
+function pintarDetalle() {
+  const L = S.sel;
+  $('detalle').classList.toggle('on', !!L);
+  if (!L) return;
+  const es = estado(L), mes = S.modo === 'mes';
+  const v = valorDe(L), tk = ticketsDe(L), esp = esperadoDe(L);
+  $('dTit').textContent = L.nombre;
+  $('dDir').textContent = `${L.dir} · ${L.barrio}`;
+  const chip = $('dChip');
+  const pc = esp > 0 ? Math.round(v / esp * 100) : 0;
+  chip.textContent = esp > 0 ? `${TEXTO_ESTADO[es]} · ${pc}%` : TEXTO_ESTADO[es];
+  chip.style.color = hex(COLOR_ESTADO[es]);
+  $('dKFact').textContent = mes ? 'Facturado en el mes' : 'Facturado hoy';
+  $('dFact').textContent = plata(v);
+  $('dTk').textContent = fmtMoneda.format(tk);
+  $('dTp').textContent = tk ? plata(v / tk) : '—';
+  $('spkIzq').textContent = mes ? '1' : '06h';
+  $('spkMed').textContent = mes ? 'Facturación por día' : 'Facturación por hora';
+  $('spkDer').textContent = mes ? String(S.diasMes) : '05h';
+  pintarSpark(L);
+}
+
+function pintarHUD() {
+  const mes = S.modo === 'mes';
+  $('hReloj').textContent = hhmm(S.hora);
+  $('dReloj').textContent =
+    `${DIAS[diaSemana()]} ${S.fecha.getDate()} · ${MESES[S.fecha.getMonth()]}`;
+
+  const vC = valorCadena(), tkC = ticketsCadena();
+  $('rotTot').textContent = mes
+    ? 'Facturación de la cadena · este mes' : 'Facturación de la cadena · hoy';
+  $('rotObj').textContent = mes ? 'Objetivo del mes' : 'Objetivo del día';
+  $('totHoy').textContent = plata(vC);
+  $('totTk').textContent = fmtMoneda.format(tkC);
+  $('totTp').textContent = tkC ? plata(vC / tkC) : '$ 0';
+
+  const pctObj = vC / objetivoCadena() * 100;
+  $('progCadena').style.width = Math.min(100, pctObj).toFixed(1) + '%';
+  $('progPct').textContent = Math.round(pctObj) + '%';
+
+  // Contra el período anterior pero a esta misma altura: comparar lo que va
+  // del mes contra un mes entero daría siempre en rojo hasta el día 28.
+  const ref = referencia() * fraccion();
+  if (ref > 50000) {
+    const dif = (vC / ref - 1) * 100;
+    $('totVs').innerHTML = `${mes ? 'Mes pasado a esta altura' : 'Ayer a esta hora'}: ` +
+      `<b>${esc(plata(ref))}</b> · ` +
+      `<b style="color:${dif >= 0 ? 'var(--cyan-claro)' : 'var(--magenta)'}">` +
+      `${dif >= 0 ? '+' : ''}${dif.toFixed(0)}%</b>`;
+  } else {
+    $('totVs').textContent = mes ? 'El mes recién arranca' : 'El día recién arranca';
+  }
+
+  // El ranking se reordena con `order` para no rehacer el DOM y perder los
+  // clics. Pero además se reordena sólo cada 2,5 s, y nunca mientras el mouse
+  // está encima: si no, la fila que vas a tocar se te mueve abajo del dedo.
+  const orden = [...filas].sort((a, b) => filaValor(b) - filaValor(a));
+  if (!orden.length) return;
+  const tope = Math.max(1, filaValor(orden[0]));
+  const reordenar = !rankCongelado && performance.now() - tOrden > 2500;
+  if (reordenar) tOrden = performance.now();
+  orden.forEach((f, k) => {
+    const es = filaEstado(f);
+    if (reordenar) {
+      f.el.style.order = String(k);
+      f.p.textContent = String(k + 1);
+    }
+    const v = filaValor(f), esp = filaEsperado(f);
+    f.m.textContent = plata(v);
+    f.i.style.width = (v / tope * 100).toFixed(1) + '%';
+    f.i.style.background = hex(COLOR_ESTADO[es]);
+    f.pc.textContent = esp > 0 ? Math.round(v / esp * 100) + '% de lo esperado' : 'Sin movimiento';
+    f.pc.style.color = hex(COLOR_ESTADO[es]);
+    f.es.textContent = fmtMoneda.format(filaTickets(f)) + ' tickets';
+  });
+
+  for (let i = 0; i < tics.length; i++) {
+    const v = S.feed[i], t = tics[i];
+    if (!v) { t.el.classList.add('vacio'); t.t.textContent = '—'; t.l.textContent = '—'; t.v.textContent = '—'; continue; }
+    t.el.classList.remove('vacio');
+    t.t.textContent = v.t;
+    t.l.textContent = v.n;
+    t.v.textContent = plata(v.monto);
+    t.v.style.color = hex(v.col);
+  }
+
+  let sub = 0;
+  for (const r of rfilas) { r.b.textContent = plata(valorDe(r.L)); sub += valorDe(r.L); }
+  $('restoTot').textContent = plata(sub);
+
+  if (S.sel && !tvOn) pintarDetalle();
+
+  if (tvOn) {
+    $('teleHora').textContent = hhmm(S.hora);
+    $('teleDia').textContent =
+      `${DIAS[diaSemana()]} ${S.fecha.getDate()} · ${MESES[S.fecha.getMonth()]}`;
+    $('teleRotCad').textContent = mes ? 'Toda la cadena · este mes' : 'Toda la cadena · hoy';
+    const L = S.sel;
+    if (L) {
+      const es = estado(L), c = hex(COLOR_ESTADO[es]);
+      const pc = Math.round(valorDe(L) / objetivoDe(L) * 100);
+      $('teleNom').textContent = L.nombre;
+      $('teleDir').textContent = `${L.dir} · ${L.barrio}`;
+      $('teleRot').textContent = mes ? 'Facturado en el mes' : 'Facturado hoy';
+      $('teleMonto').textContent = plata(valorDe(L));
+      $('teleMonto').style.color = c;
+      $('teleProg').style.width = Math.min(100, pc) + '%';
+      $('teleProg').style.background = c;
+      $('telePct').textContent = pc + '%';
+      $('telePct').style.color = c;
+      $('teleEstado').textContent = TEXTO_ESTADO[es];
+    }
+    $('teleTotal').textContent = plata(vC);
+    $('teleTk').textContent = fmtMoneda.format(tkC) + ' tickets';
+    $('teleObj').textContent = Math.round(pctObj) + '%';
+  }
+}
+
+$('dCerrar').addEventListener('click', () => seleccionar(null));
+
+$('vistas').addEventListener('click', e => {
+  const b = e.target.closest('button[data-vista]');
+  if (b) mostrarVista(b.dataset.vista);
+});
+
+// Día o mes. Cambia el tablero, el ranking, la ficha, las placas de cada
+// local y la altura de los haces, porque todo sale de los mismos accesores.
+$('modos').addEventListener('click', e => {
+  const b = e.target.closest('button[data-modo]');
+  if (!b || b.dataset.modo === S.modo) return;
+  S.modo = b.dataset.modo;
+  for (const o of $('modos').querySelectorAll('button')) {
+    o.setAttribute('aria-pressed', String(o === b));
+  }
+  tOrden = 0;                                   // que el ranking se reacomode ya
+  for (const L of LOCALES) if (L.etiquetaCv) L.etiquetaCv.ultimo = '';
+  pintarHUD();
+  if (S.sel) pintarDetalle();
+});
+
+function marcarConexion(ok) {
+  S.conectado = ok;
+  const el = $('conexion');
+  el.textContent = ok ? 'En vivo' : 'Reconectando…';
+  el.style.color = ok ? 'var(--cyan-claro)' : 'var(--magenta)';
+  el.style.borderColor = 'currentColor';
+}
+
+// El audio sólo puede arrancar desde un gesto del usuario, así que el propio
+// botón es el gesto que crea el contexto.
+$('sonido').addEventListener('click', () => {
+  const b = $('sonido');
+  audioOn = !audioOn;
+  if (audioOn) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (err) { audioOn = false; }
+  }
+  b.setAttribute('aria-pressed', String(audioOn));
+  $('sndTxt').textContent = audioOn ? 'Sonido ✓' : 'Sonido';
+  if (audioOn) sonar('venta');
+});
+
+/* ── modo TV ──────────────────────────────────────────────────────────────
+   Pantalla sola, sin panel, rotando de local cada 20 segundos. Está pensado
+   para dejarlo puesto en una tele de la oficina y no tocarlo más. */
+let EN_MAPA = [];                     // lo llena construirPanel()
+let tvOn = false, tvIdx = 0, tvT = 0;
+
+function tvMostrar(i) {
+  tvIdx = (i + EN_MAPA.length) % EN_MAPA.length;
+  tvT = 0;
+  const L = EN_MAPA[tvIdx];
+  seleccionar(L);
+  // bien arriba y lejos: en el microcentro las torres llegan a 80 unidades y
+  // una cámara baja te deja adentro del bosque de edificios
+  irA(L.wx, L.wz, 240, 0.82);
+  const ps = $('telePuntos').children;
+  for (let k = 0; k < ps.length; k++) ps[k].classList.toggle('on', k === tvIdx);
+}
+
+function entrarTV() {
+  tvOn = true;
+  $('wrap').classList.add('tv');
+  $('tele').hidden = false;
+  try { document.documentElement.requestFullscreen?.(); } catch (err) { /* opcional */ }
+  tvMostrar(0);
+  pintarHUD();
+}
+
+function salirTV() {
+  tvOn = false;
+  $('wrap').classList.remove('tv');
+  $('tele').hidden = true;
+  try { if (document.fullscreenElement) document.exitFullscreen?.(); } catch (err) { /* opcional */ }
+  seleccionar(null);
+}
+
+$('btnTv').addEventListener('click', entrarTV);
+$('teleSalir').addEventListener('click', salirTV);
+addEventListener('keydown', e => { if (e.key === 'Escape' && tvOn) salirTV(); });
+
+$('plegar').addEventListener('click', () => {
+  const p = $('datos').classList.toggle('plegada');
+  $('plegar').textContent = p ? '+ Panel' : '— Panel';
+});
+
+/* ════════════════════════════════════════════════════════════════════════════
+   8 · DÍA Y NOCHE
+   ════════════════════════════════════════════════════════════════════════════ */
+
+// La noche no es realista a propósito: es noche de videojuego, violeta y
+// saturada, para que la ciudad se vea en vez de desaparecer en negro.
+const C_CIELO_DIA = new THREE.Color(0x7fc6ef);
+const C_CIELO_NOCHE = new THREE.Color(0x2e1f52);
+const C_SOL_DIA = new THREE.Color(0xfff2d8);
+const C_SOL_BAJO = new THREE.Color(0xff8a4c);
+const C_LUNA = new THREE.Color(0x9aa6ff);
+const cAux = new THREE.Color();
+const fondo = new THREE.Color(0x191723);
+escena.background = fondo;
+
+function luzDelDia(h) {
+  const t = (h - 6.4) / 13.4;
+  if (t <= 0 || t >= 1) return 0;
+  return Math.sin(t * Math.PI);
+}
+
+function cicloDiario() {
+  const d = luzDelDia(S.hora);
+  const noche = 1 - Math.min(1, d * 2.6);
+
+  cAux.copy(C_CIELO_NOCHE).lerp(C_CIELO_DIA, Math.min(1, d * 1.5));
+  fondo.copy(cAux);
+  escena.fog.color.copy(cAux);
+  escena.fog.density = 0.0005 + (1 - d) * 0.00022;
+
+  const ang = (S.hora / 24) * Math.PI * 2 - Math.PI / 2;
+  const alt = 0.14 + Math.max(0.04, d) * 0.9;
+  sol.position.set(Math.cos(ang) * 420, alt * 520, Math.sin(ang) * 300 + 60);
+  sol.target.position.copy(CAM.dObj);
+  sol.intensity = 0.14 + d * 2.5;
+  if (d > 0.02) sol.color.copy(C_SOL_BAJO).lerp(C_SOL_DIA, Math.min(1, d * 2.2));
+  else sol.color.copy(C_LUNA);
+
+  cielo.intensity = 0.55 + d * 0.5;
+  cielo.color.copy(cAux);
+  ambiente.intensity = 0.34 + noche * 0.42;
+  relleno.intensity = 0.18 + noche * 0.75;
+
+  matEdif.emissiveIntensity = 0.1 + noche * 1.5;
+  matAutos.opacity = 0.55 + noche * 0.45;
+  agua.material.color.setHex(d > 0.35 ? 0x2a74a8 : 0x1b2a5c);
+
+  for (const L of LOCALES) {
+    if (!L.mundo) continue;
+    L.matCartel.emissiveIntensity = 0.5 + noche * 1.4 + L.pulso * 1.6;
+  }
+  return noche;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   9 · LOOP
+   ════════════════════════════════════════════════════════════════════════════ */
+
+function medir() {
+  const w = host.clientWidth || 1, h = host.clientHeight || 1;
+  renderer.setSize(w, h);
+  camara.aspect = w / h;
+  // El panel de datos tapa una banda de la pantalla: se corre el encuadre para
+  // que la ciudad quede entera en lo que se ve, no debajo de las tarjetas.
+  const tapaDerecha = w >= 900 ? Math.min(348, w * 0.4) : 0;
+  const tapaAbajo = w >= 900 ? 0 : h * 0.4;
+  camara.setViewOffset(w, h, tapaDerecha / 2, tapaAbajo / 2, w, h);
+  camara.updateProjectionMatrix();
+
+  // La ciudad mide 442 × 397 unidades. En un celular vertical el campo visual
+  // horizontal es angosto, así que la distancia panorámica sale de lo que hay
+  // que entrar a lo ancho y a lo alto, descontando lo que tapa el panel.
+  const t = Math.tan(camara.fov * Math.PI / 360);
+  const libreH = 1 - tapaDerecha / w, libreV = 1 - tapaAbajo / h;
+  const porAlto = (VISTA.alto / libreV) / (2 * t);
+  const porAncho = (VISTA.ancho / libreH) / (2 * t * camara.aspect);
+  VISTA.dist = Math.max(320, Math.min(1500, Math.max(porAlto, porAncho)));
+  if (!S.sel) { CAM.dDist = VISTA.dist; CAM.dElev = VISTA.elev; }
+}
+addEventListener('resize', medir);
+medir();
+
+const reloj = new THREE.Clock();
+let tHUD = 0, tEtiq = 0, tReloj = 0;
+
+function loop() {
+  const dt = Math.min(reloj.getDelta(), 0.05);
+
+  // El reloj ahora es el de verdad. Se lee una vez por segundo y no por cuadro:
+  // formatear con zona horaria 60 veces por segundo no aporta nada.
+  tReloj += dt;
+  if (tReloj > 1) { tReloj = 0; S.hora = horaDeLaZona(); }
+
+  // cámara: si nadie toca nada por un rato, la vista gira sola
+  if (tvOn) {
+    tvT += dt;
+    if (tvT > 20) tvMostrar(tvIdx + 1);
+    if (!quieto) CAM.dAzim += dt * 0.06;
+  } else if (!quieto && !S.sel && performance.now() - ultimaInteraccion > 9000) {
+    CAM.dAzim += dt * 0.05;
+  }
+  const k = 1 - Math.exp(-5.5 * dt);
+  CAM.obj.lerp(CAM.dObj, k);
+  CAM.dist += (CAM.dDist - CAM.dist) * k;
+  CAM.azim += (CAM.dAzim - CAM.azim) * k;
+  CAM.elev += (CAM.dElev - CAM.elev) * k;
+  const ce = Math.cos(CAM.elev), se = Math.sin(CAM.elev);
+  camara.position.set(
+    CAM.obj.x + Math.sin(CAM.azim) * CAM.dist * ce,
+    CAM.obj.y + se * CAM.dist,
+    CAM.obj.z + Math.cos(CAM.azim) * CAM.dist * ce
+  );
+  camara.lookAt(CAM.obj);
+
+  const noche = cicloDiario();
+
+  // locales
+  tEtiq += dt;
+  const refrescar = tEtiq > 0.35;
+  if (refrescar) tEtiq = 0;
+
+  if (S.vista === 'pais') animarPais(dt, noche, refrescar);
+
+  let lider = null;
+  for (const L of LOCALES) if (L.mapa && (!lider || valorDe(L) > valorDe(lider))) lider = L;
+
+  for (const L of LOCALES) {
+    if (!L.mundo || S.vista === 'pais') continue;
+    const es = estado(L);
+    const col = COLOR_ESTADO[es];
+
+    // golpe elástico: el local se estira y se vuelve a acomodar en cada venta
+    L.pulso = Math.max(0, L.pulso - dt * 2.6);
+    const p = quieto ? 0 : Math.sin(L.pulso * Math.PI);
+    L.cuerpo.scale.y = 1 + p * 0.14;
+    L.cuerpo.scale.x = L.cuerpo.scale.z = 1 - p * 0.06;
+    L.cuerpo.position.y = L.alto / 2 * L.cuerpo.scale.y;
+
+    // piso de 12: arrancando el mes todos van por el 2 % y sin piso la ciudad
+    // queda sin haces, que es justo lo que se mira de lejos
+    const objetivoAlto = 12 + Math.min(1.3, valorDe(L) / objetivoDe(L)) * 76;
+    L.hazAlto += (objetivoAlto - L.hazAlto) * (1 - Math.exp(-3 * dt));
+    L.haz.scale.y = Math.max(0.5, L.hazAlto);
+    L.hazOut.material.color.setHex(col);
+    L.hazIn.material.color.setHex(col);
+    L.hazOut.material.opacity = 0.10 + noche * 0.10 + p * 0.1;
+    L.hazIn.material.opacity = 0.34 + noche * 0.2 + p * 0.25;
+
+    L.aroT += dt;
+    if (L.aroT < 1.1) {
+      const u = L.aroT / 1.1;
+      L.anillo.scale.setScalar(12 + u * 34);
+      L.anillo.material.opacity = (1 - u) * 0.55;
+      L.anillo.material.color.setHex(col);
+    } else if (L.anillo.material.opacity !== 0) {
+      L.anillo.material.opacity = 0;
+    }
+
+    L.brillo.material.color.setHex(col);
+    L.brillo.material.opacity = 0.1 + noche * 0.13 + p * 0.22;
+    L.brillo.scale.setScalar(30 + L.hazAlto * 0.26 + p * 14);
+    L.brillo.position.y = L.alto + L.hazAlto * 0.45;
+
+    // en la tele se muestra un local por vez: las otras placas sobran
+    L.etiqueta.visible = !tvOn || L === S.sel;
+    if (refrescar && L.etiqueta.visible) {
+      pintarEtiqueta(L.etiquetaCv, L.nombre, valorDe(L), hex(col),
+        Math.round(valorDe(L) / objetivoDe(L) * 100), L === lider);
+    }
+  }
+
+  // carteles de monto
+  for (const c of CARTELES) {
+    if (c.t > 1.5) { if (c.sp.visible) c.sp.visible = false; continue; }
+    c.t += dt;
+    const u = Math.min(1, c.t / 1.5);
+    c.sp.position.set(c.x, c.y + u * 20, c.z);
+    c.sp.material.opacity = u < 0.15 ? u / 0.15 : 1 - (u - 0.15) / 0.85;
+  }
+
+  moverGente(dt);
+  moverAutos(dt);
+  moverMonedas(dt);
+  moverConfeti(dt);
+
+  tHUD += dt;
+  if (tHUD > 0.18) { tHUD = 0; pintarHUD(); }
+
+  renderer.render(escena, camara);
+}
+
+/* ── arranque ─────────────────────────────────────────────────────────────── */
+let token = '';
+try { token = localStorage.getItem('tm_token') || ''; } catch (err) { token = ''; }
+
+async function api(ruta, opciones = {}) {
+  const r = await fetch(ruta, {
+    ...opciones,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'x-token': token } : {}),
+      ...(opciones.headers || {}),
+    },
+  });
+  if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { status: r.status });
+  return r.json();
+}
+
+let mundoListo = false;
+
+function alSincronizar(e) {
+  const otroDia = sincronizar(e);
+  $('simChip').hidden = !S.simulado;
+
+  if (!mundoListo) {
+    construirMundo();
+    mundoListo = true;
+    for (const L of LOCALES) {
+      if (!L.mundo) continue;
+      L.hazAlto = 12 + Math.min(1.3, valorDe(L) / objetivoDe(L)) * 76;
+    }
+    renderer.setAnimationLoop(loop);
+    requestAnimationFrame(() => {
+      const c = $('carga');
+      if (!c) return;
+      c.classList.add('off');
+      setTimeout(() => c.remove(), 600);
+    });
+  }
+
+  pintarHUD();
+  cicloDiario();
+  if (otroDia && S.sel) pintarDetalle();
+}
+
+function conectar() {
+  // EventSource no puede mandar headers: la sesión viaja en la cookie HttpOnly
+  // que dejó el login. Por eso /api/stream acepta cookie además de header.
+  const es = new EventSource('/api/stream');
+  es.addEventListener('hola', m => { alSincronizar(JSON.parse(m.data)); marcarConexion(true); });
+  es.addEventListener('venta', m => aplicarVenta(JSON.parse(m.data)));
+  es.onopen = () => marcarConexion(true);
+  es.onerror = () => marcarConexion(false);
+}
+
+// Resincronización cada 5 minutos: corrige cualquier deriva y se entera del
+// cambio de día y de mes sin depender de que el stream no se haya perdido nada.
+setInterval(async () => {
+  if (!mundoListo) return;
+  try { alSincronizar(await api('/api/estado')); } catch (err) { /* el stream reconecta */ }
+}, 5 * 60 * 1000);
+
+function mostrarPuerta(mensaje) {
+  $('puerta').hidden = false;
+  const c = $('carga');
+  if (c) c.hidden = true;
+  $('errLogin').textContent = mensaje || '';
+  $('clave').focus();
+}
+
+$('formLogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('errLogin').textContent = '';
+  try {
+    const r = await api('/api/login', {
+      method: 'POST', body: JSON.stringify({ pass: $('clave').value }),
+    });
+    token = r.token;
+    try { localStorage.setItem('tm_token', token); } catch (err) { /* ventana privada */ }
+    $('puerta').hidden = true;
+    const c = $('carga');
+    if (c) c.hidden = false;
+    entrar();
+  } catch (err) {
+    $('errLogin').textContent = err.status === 401
+      ? 'Contraseña incorrecta' : 'No se pudo entrar';
+  }
+});
+
+async function entrar() {
+  try {
+    alSincronizar(await api('/api/estado'));
+    marcarConexion(true);
+    conectar();
+  } catch (err) {
+    if (err.status === 401) return mostrarPuerta('');
+    console.error('No se pudo entrar:', err);
+    const c = $('cargaTxt');
+    if (c) c.textContent = 'No se pudo conectar. Reintentando…';
+    setTimeout(entrar, 5000);
+  }
+}
+
+// Las fuentes se esperan porque los carteles y las placas se dibujan en canvas:
+// si no están cargadas, salen en una tipografía que no es la de la marca.
+const fuentes = document.fonts
+  ? Promise.race([
+      Promise.all([
+        document.fonts.load('700 56px "Barlow Condensed"'),
+        document.fonts.load('600 46px "Barlow Condensed"'),
+      ]),
+      new Promise(r => setTimeout(r, 2500)),
+    ])
+  : Promise.resolve();
+
+fuentes.then(entrar, entrar);   // pase lo que pase con las fuentes, entra una sola vez
+</script>
+
+</body>
+</html>

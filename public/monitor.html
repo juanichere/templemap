@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minimundo TEMPLE · monitor</title>
+<style>
+/* Página provisional para ver que el circuito funciona. El mundo 3D la
+   reemplaza cuando se porte: va a pegarle a los mismos endpoints. */
+:root{
+  color-scheme:dark;
+  --ink:#231f20; --noche:#17151b; --noche2:#1f1c24; --paper:#f4f2ee;
+  --yellow:#fae100; --magenta:#d40f7d; --cyan:#3fc0bc; --n500:#9a948c; --n600:#7a746d;
+  --linea:rgba(244,242,238,.16);
+  --cond:"Barlow Condensed","Barlow",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--noche);color:var(--paper);
+  font:15px/1.45 "Barlow",system-ui,-apple-system,sans-serif}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 18px 60px}
+h1{font-family:var(--cond);font-weight:700;font-size:28px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--yellow);margin:0 0 2px}
+.sub{color:var(--n500);font-size:13px;margin-bottom:22px}
+.rot{font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.17em;
+  text-transform:uppercase;color:var(--n600);margin:26px 0 8px}
+.caja{background:var(--noche2);border:1px solid var(--linea);padding:14px}
+button{font:inherit;font-family:var(--cond);font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;font-size:13px;min-height:34px;padding:0 12px;cursor:pointer;
+  background:transparent;border:1px solid var(--linea);color:var(--paper);border-radius:0}
+button:hover{background:rgba(244,242,238,.08)}
+button.p{background:var(--yellow);border-color:var(--yellow);color:var(--ink)}
+input{font:inherit;background:var(--noche);border:1px solid var(--linea);color:var(--paper);
+  padding:8px 10px;border-radius:0;min-width:200px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--n600);text-align:left;padding:6px 8px;
+  border-bottom:1px solid var(--linea)}
+td{padding:7px 8px;border-bottom:1px solid rgba(244,242,238,.07)}
+td.r,th.r{text-align:right}
+.barra{height:5px;background:rgba(244,242,238,.12);position:relative;margin-top:4px}
+.barra i{position:absolute;inset:0 auto 0 0;display:block;background:var(--yellow)}
+.pill{font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;padding:2px 7px;border:1px solid currentColor}
+.feed{max-height:300px;overflow:auto;font-size:13px}
+.feed div{display:grid;grid-template-columns:70px 1fr auto;gap:10px;padding:4px 0;
+  border-bottom:1px solid rgba(244,242,238,.07)}
+.fila{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.err{color:var(--magenta)}
+.ok{color:var(--cyan)}
+a{color:var(--cyan)}
+.aviso{border-color:var(--magenta);color:var(--magenta);margin-bottom:10px;font-size:13px}
+td input{min-width:0;width:100%;padding:5px 7px;font-size:13px}
+td input.r{text-align:right;font-variant-numeric:tabular-nums}
+td input.sucia{border-color:var(--yellow)}
+.pista{font-size:11px;color:var(--n600);margin-top:3px;text-align:right}
+.pista b{color:var(--n500);font-weight:600}
+#panel[hidden],#login[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Minimundo</h1>
+  <div class="sub">Monitor del backend · <a href="/">ver el mundo 3D</a></div>
+
+  <div id="login" class="caja">
+    <div class="fila">
+      <input id="pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+      <button class="p" id="entrar">Entrar</button>
+      <span id="loginMsg" class="err"></span>
+    </div>
+  </div>
+
+  <div id="panel" hidden>
+    <div class="fila">
+      <span id="conexion" class="pill">Conectando…</span>
+      <span id="resumen" class="num"></span>
+      <span style="flex:1"></span>
+      <button id="simOn">Simulador</button>
+      <button id="simOff">Parar</button>
+      <button id="simBorrar">Borrar datos falsos</button>
+    </div>
+    <div id="simMsg" class="sub" style="margin:8px 0 0"></div>
+
+    <div class="rot">Locales</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Local</th>
+          <th class="r">Hoy</th><th class="r">Tickets</th><th class="r">% del día</th>
+          <th class="r">Mes</th><th class="r">% del mes</th>
+        </tr>
+      </thead>
+      <tbody id="tabla"></tbody>
+    </table>
+
+    <div class="rot">Ventas en vivo</div>
+    <div class="caja feed" id="feed"></div>
+
+    <div class="rot">Ajustes</div>
+    <div class="caja aviso" id="avisoPos" hidden></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Local</th>
+          <th>Clave en el POS</th>
+          <th class="r">Objetivo diario</th>
+          <th class="r">Objetivo del mes <span id="periodoAj"></span></th>
+        </tr>
+      </thead>
+      <tbody id="ajustes"></tbody>
+    </table>
+    <div class="sub" id="ajustesMsg" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const plata = n => '$ ' + new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n || 0);
+const hora = iso => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let token = localStorage.getItem('tm_token') || '';
+let ultimo = null;
+
+async function api(ruta, opciones = {}) {
+  const r = await fetch(ruta, {
+    ...opciones,
+    headers: { 'Content-Type': 'application/json', ...(token ? { 'x-token': token } : {}), ...(opciones.headers || {}) },
+  });
+  if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { status: r.status });
+  return r.json();
+}
+
+$('entrar').addEventListener('click', async () => {
+  $('loginMsg').textContent = '';
+  try {
+    const r = await api('/api/login', { method: 'POST', body: JSON.stringify({ pass: $('pass').value }) });
+    token = r.token;
+    localStorage.setItem('tm_token', token);
+    arrancar();
+  } catch (err) {
+    $('loginMsg').textContent = err.status === 401 ? 'Contraseña incorrecta' : 'No se pudo entrar';
+  }
+});
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('entrar').click(); });
+
+function pintar(e) {
+  ultimo = e;
+  const c = e.cadena;
+  $('resumen').innerHTML =
+    `Hoy <b>${esc(plata(c.hoy.monto))}</b> · ${c.hoy.tickets} tickets &nbsp;·&nbsp; ` +
+    `Mes <b>${esc(plata(c.mes.monto))}</b> de ${esc(plata(c.objetivo_mensual))}`;
+
+  $('tabla').innerHTML = e.locales.map(L => {
+    const pd = L.objetivo_diario ? L.hoy.monto / L.objetivo_diario * 100 : 0;
+    const pm = L.objetivo_mensual ? L.mes.monto / L.objetivo_mensual * 100 : 0;
+    return `<tr>
+      <td>${esc(L.nombre)}<div style="color:var(--n600);font-size:12px">${esc(L.dir)}</div></td>
+      <td class="r num">${esc(plata(L.hoy.monto))}<div class="barra"><i style="width:${Math.min(100, pd).toFixed(1)}%"></i></div></td>
+      <td class="r num">${L.hoy.tickets}</td>
+      <td class="r num">${pd.toFixed(0)}%</td>
+      <td class="r num">${esc(plata(L.mes.monto))}</td>
+      <td class="r num">${pm.toFixed(0)}%</td>
+    </tr>`;
+  }).join('');
+
+  $('simMsg').textContent = e.simulador
+    ? 'Simulador prendido: las ventas que ves son falsas y están marcadas origen=simulador.'
+    : '';
+}
+
+function agregarFeed(v) {
+  const nombre = (ultimo && ultimo.locales.find(L => L.id === v.local_id) || {}).nombre || v.local_id;
+  const fila = document.createElement('div');
+  fila.innerHTML = `<span style="color:var(--n600)">${esc(hora(v.ts))}</span>` +
+    `<span>${esc(nombre)}</span><span class="num" style="color:var(--yellow)">${esc(plata(v.monto))}</span>`;
+  $('feed').prepend(fila);
+  while ($('feed').children.length > 60) $('feed').lastChild.remove();
+}
+
+function conectar() {
+  // EventSource no manda headers: la sesión viaja en la cookie HttpOnly que
+  // dejó el login. Por eso /api/stream acepta cookie además de header.
+  const es = new EventSource('/api/stream');
+  es.addEventListener('hola', m => { pintar(JSON.parse(m.data)); marcar(true); });
+  es.addEventListener('venta', m => {
+    const v = JSON.parse(m.data);
+    agregarFeed(v);
+    if (!ultimo) return;
+    const L = ultimo.locales.find(x => x.id === v.local_id);
+    if (L) { L.hoy.monto += v.monto; L.hoy.tickets++; L.mes.monto += v.monto; L.mes.tickets++; }
+    ultimo.cadena.hoy.monto += v.monto; ultimo.cadena.hoy.tickets++;
+    ultimo.cadena.mes.monto += v.monto; ultimo.cadena.mes.tickets++;
+    pintar(ultimo);
+  });
+  es.onerror = () => marcar(false);
+}
+
+function marcar(ok) {
+  const el = $('conexion');
+  el.textContent = ok ? 'En vivo' : 'Reconectando…';
+  el.style.color = ok ? 'var(--cyan)' : 'var(--magenta)';
+}
+
+async function arrancar() {
+  try {
+    const e = await api('/api/estado');
+    $('login').hidden = true;
+    $('panel').hidden = false;
+    pintar(e);
+    pintarAjustes(await api('/api/locales'));
+    conectar();
+  } catch (err) {
+    $('login').hidden = false;
+    $('panel').hidden = true;
+  }
+}
+
+/* ── ajustes ───────────────────────────────────────────────────────────────
+   Se edita en la fila, como los responsables en Aperturas: input + change, sin
+   abrir un formulario. Si el server rechaza, el input VUELVE al valor guardado:
+   dejar en pantalla un número que no entró es peor que no dejar editar. */
+
+// El equipo escribe "1.850.000,50", "400.000.000" y también "12500.75". Las
+// tres tienen que entrar bien. La coma es siempre decimal, que es como se
+// escribe acá; el punto es de miles sólo si separa grupos de tres.
+function aNumero(txt) {
+  const s = String(txt).trim().replace(/[\s$]/g, '');
+  if (!s) return null;
+  if (!/^-?[\d.,]+$/.test(s)) return NaN;
+
+  const coma = s.includes(','), punto = s.includes('.');
+  let limpio;
+  if (coma && punto) {
+    // el último de los dos separadores es el decimal
+    limpio = s.lastIndexOf(',') > s.lastIndexOf('.')
+      ? s.replace(/\./g, '').replace(',', '.')
+      : s.replace(/,/g, '');
+  } else if (coma) {
+    limpio = s.replace(',', '.');
+  } else if (punto) {
+    limpio = /^-?\d{1,3}(\.\d{3})+$/.test(s) ? s.replace(/\./g, '') : s;
+  } else {
+    limpio = s;
+  }
+  const v = Number(limpio);
+  return Number.isFinite(v) ? v : NaN;
+}
+
+let ajustes = null;
+
+function pintarAjustes(d) {
+  ajustes = d;
+  $('periodoAj').textContent = '· ' + d.periodo;
+
+  const sinPos = d.locales.filter(L => L.activo && !L.pos_id);
+  $('avisoPos').hidden = !sinPos.length;
+  if (sinPos.length) {
+    $('avisoPos').innerHTML = `<b>${sinPos.length} ${sinPos.length === 1 ? 'local' : 'locales'} sin clave del POS.</b> ` +
+      `Hasta que se carguen, sus ventas se rechazan con <em>local desconocido</em>: ` +
+      esc(sinPos.map(L => L.nombre).join(', '));
+  }
+
+  $('ajustes').innerHTML = d.locales.map(L => `<tr>
+    <td>${esc(L.nombre)}<div style="color:var(--n600);font-size:12px">${esc(L.barrio)}</div></td>
+    <td><input data-id="${esc(L.id)}" data-campo="pos" value="${esc(L.pos_id)}"
+               placeholder="sin cargar" autocomplete="off"></td>
+    <td><input class="r" data-id="${esc(L.id)}" data-campo="diario"
+               value="${L.objetivo_diario}" inputmode="decimal"></td>
+    <td><input class="r" data-id="${esc(L.id)}" data-campo="mensual" inputmode="decimal"
+               value="${L.mensual_manual ? L.objetivo_mensual : ''}"
+               placeholder="${L.objetivo_mensual}">
+        <div class="pista">${L.mensual_manual
+          ? '<b>a mano</b> · vaciar para volver al derivado'
+          : 'derivado del diario'}</div></td>
+  </tr>`).join('');
+
+  for (const i of $('ajustes').querySelectorAll('input')) i.dataset.guardado = i.value;
+}
+
+// Refresca sin pisar lo que se está tipeando: el objetivo diario cambia el
+// mensual derivado, así que después de guardar hay que actualizar el resto.
+async function refrescarAjustes() {
+  const d = await api('/api/locales');
+  const foco = document.activeElement;
+  const previos = new Map();
+  for (const i of $('ajustes').querySelectorAll('input')) {
+    if (i === foco) previos.set(i.dataset.id + '|' + i.dataset.campo, i.value);
+  }
+  pintarAjustes(d);
+  for (const i of $('ajustes').querySelectorAll('input')) {
+    const clave = i.dataset.id + '|' + i.dataset.campo;
+    if (previos.has(clave)) { i.value = previos.get(clave); i.focus(); }
+  }
+}
+
+$('ajustes').addEventListener('change', async e => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.campo) return;
+  const { id, campo, guardado } = el.dataset;
+  const volver = texto => { el.value = guardado; $('ajustesMsg').innerHTML = `<span class="err">${esc(texto)}</span>`; };
+
+  try {
+    if (campo === 'pos') {
+      await api(`/api/locales/${encodeURIComponent(id)}/pos-id`,
+        { method: 'PUT', body: JSON.stringify({ pos_id: el.value.trim() }) });
+    } else if (campo === 'diario') {
+      const n = aNumero(el.value);
+      if (n === null || Number.isNaN(n) || n < 0) return volver('El objetivo diario tiene que ser un número.');
+      await api(`/api/locales/${encodeURIComponent(id)}/objetivo`,
+        { method: 'PUT', body: JSON.stringify({ diario: n }) });
+    } else {
+      const n = aNumero(el.value);
+      if (n !== null && (Number.isNaN(n) || n < 0)) return volver('El objetivo del mes tiene que ser un número.');
+      await api(`/api/locales/${encodeURIComponent(id)}/objetivo-mensual`,
+        { method: 'PUT', body: JSON.stringify({ periodo: ajustes.periodo, monto: n }) });
+    }
+    $('ajustesMsg').innerHTML = '<span class="ok">Guardado.</span>';
+    await refrescarAjustes();
+    pintar(await api('/api/estado'));
+  } catch (err) {
+    volver(err.status === 401 ? 'Se cerró la sesión.' : 'No se pudo guardar.');
+  }
+});
+
+$('simOn').addEventListener('click', async () => {
+  try {
+    const r = await api('/api/simulador', { method: 'POST', body: JSON.stringify({ on: true, velocidad: 60 }) });
+    $('simMsg').textContent = `Simulador prendido a ×${r.velocidad}.`;
+  } catch (err) {
+    $('simMsg').textContent = 'No se pudo prender (en producción está bloqueado salvo que lo habilites).';
+  }
+});
+$('simOff').addEventListener('click', async () => {
+  await api('/api/simulador', { method: 'POST', body: JSON.stringify({ on: false }) });
+  $('simMsg').textContent = 'Simulador parado.';
+});
+$('simBorrar').addEventListener('click', async () => {
+  const r = await api('/api/simulador/datos', { method: 'DELETE' });
+  $('simMsg').textContent = `Borradas ${r.borradas} ventas del simulador.`;
+  pintar(await api('/api/estado'));
+});
+
+arrancar();
+</script>
+</body>
+</html>
