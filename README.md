@@ -12,9 +12,50 @@ npm start            # producción
 npm run probar       # smoke test del circuito entero contra un server corriendo
 ```
 
-Node ≥ 20. Deploy en Railway (nixpacks, `railway.toml`). **Hay que setear
-`DATA_DIR=/data` con un volumen persistente**, si no la base se pierde en cada
-redeploy — el mismo cuidado que en Aperturas.
+Node ≥ 20.
+
+---
+
+## Deploy
+
+Igual que Aperturas: Railway con nixpacks, push a git → auto-deploy.
+
+**El server no arranca sin `APP_PASSWORD` propia** (mínimo 8 caracteres) cuando
+detecta que está en un servidor — mira `NODE_ENV=production` y también las
+variables que Railway setea solo, para no depender de que alguien se acuerde.
+Un deploy al que se le olvidó la variable dejaría la facturación de la cadena
+en internet con la clave de ejemplo.
+
+Las claves generadas para este proyecto están en **`.env`** (que está en
+`.gitignore`, no se commitea). Son las mismas que hay que cargar en Railway.
+
+```bash
+# 1 · subir el código
+git push -u origin main
+
+# 2 · entrar a Railway (abre el navegador)
+railway login
+
+# 3 · crear el proyecto y vincular esta carpeta
+railway init
+
+# 4 · variables del servicio
+railway variables --set APP_PASSWORD=... --set HOOK_SECRET=... \
+  --set DATA_DIR=/data --set NODE_ENV=production
+```
+
+Después, en el dashboard:
+
+- **Volumen** montado en `/data`. Sin esto la base se pierde en cada redeploy.
+- **Source** → conectar `juanichere/temple-minimundo` para el auto-deploy.
+- **Generate domain**.
+
+Para verificar: `GET /salud` tiene que devolver `"hook": "firma"`. Si dice
+`"sin configurar"`, falta `HOOK_SECRET` y el webhook va a rechazar todo.
+
+El `SIMULADOR` queda en `0`: en producción está bloqueado salvo que se habilite
+a mano con `SIMULADOR_EN_PROD=1`, justamente para que no entre facturación
+inventada al tablero real.
 
 ---
 
