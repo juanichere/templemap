@@ -7,12 +7,17 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "probar": "node probar.js"
+    "probar": "node probar.js",
+    "probar:objetivos": "node probar-objetivos.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
     "express": "^4.21.2"
   },
-  "devDependencies": { "nodemon": "^3.1.9" }
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
 }

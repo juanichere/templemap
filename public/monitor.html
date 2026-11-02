@@ -55,6 +55,12 @@ td input.r{text-align:right;font-variant-numeric:tabular-nums}
 td input.sucia{border-color:var(--yellow)}
 .pista{font-size:11px;color:var(--n600);margin-top:3px;text-align:right}
 .pista b{color:var(--n500);font-weight:600}
+.boton{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;cursor:pointer;
+  font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing:.08em;
+  text-transform:uppercase;border:1px solid var(--linea);color:var(--paper);text-decoration:none}
+.boton:hover{background:rgba(244,242,238,.08)}
+.derivado{font-variant-numeric:tabular-nums;color:var(--n400)}
+#previo ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--n500)}
 #panel[hidden],#login[hidden]{display:none}
 </style>
 </head>
@@ -97,15 +103,32 @@ td input.sucia{border-color:var(--yellow)}
     <div class="rot">Ventas en vivo</div>
     <div class="caja feed" id="feed"></div>
 
-    <div class="rot">Ajustes</div>
+    <div class="rot">Objetivos por planilla</div>
+    <div class="caja">
+      <div class="fila">
+        <a id="bajarObj" class="boton" download>↓ Bajar planilla del año</a>
+        <label class="boton">↑ Subir planilla
+          <input type="file" id="subirObj" accept=".csv,text/csv" hidden>
+        </label>
+        <span class="sub" id="objMsg" style="margin:0"></span>
+      </div>
+      <div class="sub" style="margin:9px 0 0">
+        Una fila por local y una columna por mes. Se llena en Excel y se vuelve
+        a subir. Las celdas vacías no tocan nada: lo que no está en la planilla
+        queda como está.
+      </div>
+    </div>
+    <div class="caja" id="previo" hidden style="margin-top:10px"></div>
+
+    <div class="rot">Ajustes por local</div>
     <div class="caja aviso" id="avisoPos" hidden></div>
     <table>
       <thead>
         <tr>
           <th>Local</th>
           <th>Clave en el POS</th>
-          <th class="r">Objetivo diario</th>
           <th class="r">Objetivo del mes <span id="periodoAj"></span></th>
+          <th class="r">Objetivo de hoy</th>
         </tr>
       </thead>
       <tbody id="ajustes"></tbody>
@@ -262,18 +285,24 @@ function pintarAjustes(d) {
       esc(sinPos.map(L => L.nombre).join(', '));
   }
 
+  $('bajarObj').href = '/api/objetivos.csv?anio=' + d.periodo.slice(0, 4);
+
   $('ajustes').innerHTML = d.locales.map(L => `<tr>
     <td>${esc(L.nombre)}<div style="color:var(--n600);font-size:12px">${esc(L.barrio)}</div></td>
     <td><input data-id="${esc(L.id)}" data-campo="pos" value="${esc(L.pos_id)}"
                placeholder="sin cargar" autocomplete="off"></td>
-    <td><input class="r" data-id="${esc(L.id)}" data-campo="diario"
-               value="${L.objetivo_diario}" inputmode="decimal"></td>
     <td><input class="r" data-id="${esc(L.id)}" data-campo="mensual" inputmode="decimal"
                value="${L.mensual_manual ? L.objetivo_mensual : ''}"
                placeholder="${L.objetivo_mensual}">
         <div class="pista">${L.mensual_manual
-          ? '<b>a mano</b> · vaciar para volver al derivado'
-          : 'derivado del diario'}</div></td>
+          ? '<b>cargado</b> · vaciar para volver al estimado'
+          : 'estimado'}</div></td>
+    <td>${L.mensual_manual
+      ? `<div class="derivado">${plata(L.diario_hoy)}</div>
+         <div class="pista">sale del mes</div>`
+      : `<input class="r" data-id="${esc(L.id)}" data-campo="diario"
+                value="${L.objetivo_diario}" inputmode="decimal">
+         <div class="pista">respaldo, hasta cargar el mes</div>`}</td>
   </tr>`).join('');
 
   for (const i of $('ajustes').querySelectorAll('input')) i.dataset.guardado = i.value;
@@ -321,6 +350,75 @@ $('ajustes').addEventListener('change', async e => {
     pintar(await api('/api/estado'));
   } catch (err) {
     volver(err.status === 401 ? 'Se cerró la sesión.' : 'No se pudo guardar.');
+  }
+});
+
+/* ── subir la planilla de objetivos ────────────────────────────────────────
+   Siempre pasa por una previsualización: el resumen que se muestra sale de
+   correr la lectura entera, así que es exactamente lo que va a pasar y no una
+   estimación aparte que puede mentir. */
+let planillaPendiente = null;
+
+async function mandarPlanilla(buf, preview) {
+  const r = await fetch('/api/objetivos/import' + (preview ? '?preview=1' : ''), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream', 'x-token': token },
+    body: buf,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error('import'), { detalle: j.detalle || j.error });
+  return j;
+}
+
+function mostrarPrevio(j, nombre) {
+  const ign = j.ignoradas || [];
+  $('previo').hidden = false;
+  $('previo').innerHTML = `
+    <b>${esc(nombre)}</b> — ${j.a_cargar
+      ? `se van a cargar <b>${j.a_cargar}</b> objetivos para <b>${j.locales}</b> locales
+         en ${esc(j.periodos.join(', '))}.`
+      : '<span class="err">no hay ningún objetivo para cargar.</span>'}
+    ${ign.length ? `<div class="err" style="margin-top:8px">${ign.length} fila(s) salteada(s):</div>
+      <ul>${ign.slice(0, 8).map(x => `<li>fila ${x.fila}: ${esc(x.motivo)}</li>`).join('')}
+      ${ign.length > 8 ? `<li>…y ${ign.length - 8} más</li>` : ''}</ul>` : ''}
+    <div class="fila" style="margin-top:12px">
+      ${j.a_cargar ? '<button class="p" id="confirmarObj">Confirmar</button>' : ''}
+      <button id="cancelarObj">Cancelar</button>
+    </div>`;
+
+  const cerrar = () => { $('previo').hidden = true; planillaPendiente = null; };
+  const ok = $('confirmarObj');
+  if (ok) {
+    ok.addEventListener('click', async () => {
+      try {
+        const r = await mandarPlanilla(planillaPendiente, false);
+        cerrar();
+        $('objMsg').innerHTML = `<span class="ok">Cargados ${r.a_cargar} objetivos.</span>`;
+        await refrescarAjustes();
+        pintar(await api('/api/estado'));
+      } catch (err) {
+        $('objMsg').innerHTML = '<span class="err">No se pudo guardar.</span>';
+      }
+    });
+  }
+  $('cancelarObj').addEventListener('click', cerrar);
+}
+
+$('subirObj').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';                       // que se pueda subir el mismo archivo dos veces
+  if (!f) return;
+  $('objMsg').textContent = 'Leyendo…';
+  try {
+    const buf = await f.arrayBuffer();
+    const j = await mandarPlanilla(buf, true);
+    planillaPendiente = buf;
+    mostrarPrevio(j, f.name);
+    $('objMsg').textContent = '';
+  } catch (err) {
+    planillaPendiente = null;
+    $('previo').hidden = true;
+    $('objMsg').innerHTML = `<span class="err">${esc(err.detalle || 'No se pudo leer la planilla.')}</span>`;
   }
 });
 

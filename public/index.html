@@ -589,6 +589,7 @@ const S = {
   periodo: '',
   diasMes: 30,
   fsumPrevios: 0,
+  fsumMes: 1,
   simulado: false,
   conectado: false,
   cadena: {
@@ -640,6 +641,7 @@ function sincronizar(e) {
   S.periodo = e.periodo;
   S.diasMes = e.dias_mes;
   S.fsumPrevios = e.fsum_previos;
+  S.fsumMes = e.fsum_mes || 1;
   S.simulado = !!e.simulador;
   S.fecha = new Date(e.dia_comercial + 'T12:00:00');
   S.hora = horaDeLaZona();
@@ -750,8 +752,10 @@ function fraccion() {
 const valorDe = L => (S.modo === 'mes' ? L.mesTotal : L.fact);
 const ticketsDe = L => (S.modo === 'mes' ? L.tkMesTotal : L.tickets);
 const objetivoDe = L => (S.modo === 'mes' ? L.objetivoMes : L.objetivo);
+// En mes: lo que debería llevar por los días cerrados, repartiendo el objetivo
+// del mes según cuánto pesa cada día de la semana, más lo que va de hoy.
 const esperadoDe = L => (S.modo === 'mes'
-  ? L.objetivo * S.fsumPrevios / 0.9 + esperado(L)
+  ? L.objetivoMes * (S.fsumPrevios / (S.fsumMes || 1)) + esperado(L)
   : esperado(L));
 
 const valorCadena = () => (S.modo === 'mes' ? S.cadena.mes.monto : S.cadena.hoy.monto);

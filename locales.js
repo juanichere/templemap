@@ -93,11 +93,23 @@ function sumaFactores(anio, mes /* 1..12 */, desde, hasta) {
 
 // Igual que el diario, el objetivo del mes NO es el diario por 30: depende de
 // cuántos viernes y sábados caen, que facturan más del doble que un lunes.
+// Esto se usa sólo como respaldo, para los meses sin objetivo cargado.
 function objetivoMensual(objetivoDiario, anio, mes /* 1..12 */) {
   const dias = new Date(anio, mes, 0).getDate();
   return Math.round(objetivoDiario * sumaFactores(anio, mes, 1, dias + 1) / 0.9);
 }
 
+// El camino que importa: administración fija el objetivo del MES y el de cada
+// día sale de repartirlo según cuánto pesa ese día de la semana. Pedir un
+// objetivo por día sería pedir 365 números por local y nadie los va a cargar.
+function objetivoDelDia(objetivoMes, anio, mes /* 1..12 */, dia) {
+  const dias = new Date(anio, mes, 0).getDate();
+  const total = sumaFactores(anio, mes, 1, dias + 1);
+  if (!total) return 0;
+  return objetivoMes * FACTOR_DIA[new Date(anio, mes - 1, dia).getDay()] / total;
+}
+
 module.exports = {
-  LOCALES, PERFILES, FACTOR_DIA, INICIO_DIA, sumaFactores, objetivoMensual,
+  LOCALES, PERFILES, FACTOR_DIA, INICIO_DIA,
+  sumaFactores, objetivoMensual, objetivoDelDia,
 };

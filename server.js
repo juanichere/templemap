@@ -7,7 +7,8 @@ const express = require('express');
 const Database = require('better-sqlite3');
 
 const {
-  LOCALES, PERFILES, FACTOR_DIA, INICIO_DIA, sumaFactores, objetivoMensual,
+  LOCALES, PERFILES, FACTOR_DIA, INICIO_DIA,
+  sumaFactores, objetivoMensual, objetivoDelDia,
 } = require('./locales');
 const { adaptar, ADAPTADORES } = require('./adaptadores');
 
@@ -314,7 +315,18 @@ function estado() {
     if (i >= 0 && i < diasMes) dias.get(r.local_id)[i] = r.monto;
   }
 
-  const locales = LOC.filter(L => L.activo).map(L => ({
+  const nroDia = Number(dia.slice(8, 10));
+
+  const locales = LOC.filter(L => L.activo).map(L => {
+  // Manda el objetivo del mes: el del día sale de repartirlo según cuánto
+  // pesa ese día de la semana. Sólo si el mes no está cargado se usa el
+  // objetivo diario del local como respaldo.
+  const cargado = objManual.get(L.id);
+  const mensual = cargado ?? objetivoMensual(L.objetivo_diario, anio, mes);
+  const diario = cargado != null
+    ? Math.round(objetivoDelDia(cargado, anio, mes, nroDia))
+    : L.objetivo_diario;
+  return {
     id: L.id,
     nombre: L.nombre,
     dir: L.dir,
@@ -322,8 +334,9 @@ function estado() {
     lat: L.lat,
     lng: L.lng,
     en_mapa: !!L.en_mapa,
-    objetivo_diario: L.objetivo_diario,
-    objetivo_mensual: objManual.get(L.id) ?? objetivoMensual(L.objetivo_diario, anio, mes),
+    objetivo_diario: diario,
+    objetivo_cargado: cargado != null,
+    objetivo_mensual: mensual,
     // Forma de la demanda hora por hora. Hoy es un perfil cargado a mano; el
     // día que haya meses de historia, sale de la curva real del local.
     curva: PERFILES[L.perfil] || PERFILES.noche,
@@ -333,7 +346,8 @@ function estado() {
     mes_anterior: tot(delMesPasado.get(L.id)),
     horas: horas.get(L.id) || new Array(24).fill(0),
     dias: dias.get(L.id) || new Array(diasMes).fill(0),
-  }));
+  };
+  });
 
   const sumar = (campo, clave) => locales.reduce((a, L) => a + L[campo][clave], 0);
 
@@ -547,7 +561,9 @@ app.get('/api/locales/:id/dias', requiereLectura, (req, res) => {
 // del mes, acá están los objetivos y la clave con la que el POS llama a cada
 // local. Van separados porque se miran en momentos distintos.
 app.get('/api/locales', requiereLectura, (req, res) => {
-  const { periodo, anio, mes } = limitesMes(hoyComercial());
+  const hoy = hoyComercial();
+  const hoyNro = Number(hoy.slice(8, 10));
+  const { periodo, anio, mes } = limitesMes(hoy);
   const manual = new Map(
     db.prepare('SELECT local_id, monto FROM objetivos WHERE periodo = ?').all(periodo)
       .map(r => [r.local_id, r.monto])
@@ -562,11 +578,15 @@ app.get('/api/locales', requiereLectura, (req, res) => {
       en_mapa: !!L.en_mapa,
       activo: !!L.activo,
       pos_id: L.pos_id || '',
-      objetivo_diario: L.objetivo_diario,
+      // El del mes es el que manda. `objetivo_diario` es el respaldo que se
+      // usa sólo en los meses sin cargar; `diario_hoy` es lo que de verdad
+      // se está midiendo hoy, salga de donde salga.
       objetivo_mensual: manual.get(L.id) ?? objetivoMensual(L.objetivo_diario, anio, mes),
-      // Si nadie lo cargó a mano, sale del diario día por día. Importa saber
-      // cuál de las dos cosas estás mirando antes de discutir el número.
       mensual_manual: manual.has(L.id),
+      objetivo_diario: L.objetivo_diario,
+      diario_hoy: manual.has(L.id)
+        ? Math.round(objetivoDelDia(manual.get(L.id), anio, mes, hoyNro))
+        : L.objetivo_diario,
     })),
   });
 });
@@ -606,6 +626,194 @@ app.put('/api/locales/:id/objetivo-mensual', requiereEscritura, (req, res) => {
     .run(id, periodo, Math.round(monto));
   res.json({ ok: true });
 });
+
+/* ── objetivos por planilla ────────────────────────────────────────────────
+   Cargar un objetivo por local y por día serían 365 números por local y nadie
+   los va a cargar. Administración piensa por mes, así que se baja una grilla
+   de locales × meses, se llena en Excel y se vuelve a subir. Mismo ida y
+   vuelta que el presupuesto en Aperturas, y por la misma razón.
+   ────────────────────────────────────────────────────────────────────────── */
+
+const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function parsearPeriodo(txt, anioDefecto) {
+  const s = normalizar(txt).replace(/\s+/g, ' ');
+  if (!s) return null;
+  let m;
+  if ((m = s.match(/^(\d{4})[-/](\d{1,2})$/))) {
+    const mes = Number(m[2]);
+    return mes >= 1 && mes <= 12 ? `${m[1]}-${String(mes).padStart(2, '0')}` : null;
+  }
+  if ((m = s.match(/^(\d{1,2})[-/](\d{4})$/))) {
+    const mes = Number(m[1]);
+    return mes >= 1 && mes <= 12 ? `${m[2]}-${String(mes).padStart(2, '0')}` : null;
+  }
+  // "noviembre", "nov", "noviembre 2026", "nov-26"
+  const nombre = s.match(/^([a-z]+)\s*[-/ ]?\s*(\d{2,4})?$/);
+  if (nombre) {
+    const i = MESES_ES.findIndex(n => n.startsWith(nombre[1].slice(0, 3)) && nombre[1].length >= 3);
+    if (i >= 0) {
+      let a = nombre[2] ? Number(nombre[2]) : anioDefecto;
+      if (a < 100) a += 2000;
+      return `${a}-${String(i + 1).padStart(2, '0')}`;
+    }
+  }
+  return null;
+}
+
+// "1.850.000,50" y "12500.75" tienen que dar lo que corresponde. La coma es
+// decimal, que es como se escribe acá; el punto es de miles sólo si separa
+// grupos de tres.
+function montoDeTexto(txt) {
+  const s = String(txt).trim().replace(/[\s$]/g, '');
+  if (!s || s === '-') return null;
+  if (!/^-?[\d.,]+$/.test(s)) return NaN;
+  const coma = s.includes(','), punto = s.includes('.');
+  let limpio;
+  if (coma && punto) {
+    limpio = s.lastIndexOf(',') > s.lastIndexOf('.')
+      ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  } else if (coma) limpio = s.replace(',', '.');
+  else if (punto) limpio = /^-?\d{1,3}(\.\d{3})+$/.test(s) ? s.replace(/\./g, '') : s;
+  else limpio = s;
+  const v = Number(limpio);
+  return Number.isFinite(v) ? v : NaN;
+}
+
+function partirCSV(texto) {
+  const sinBom = texto.replace(/^﻿/, '');
+  const primera = sinBom.split(/\r?\n/)[0] || '';
+  const sep = (primera.split(';').length > primera.split(',').length) ? ';' : ',';
+  const filas = [];
+  for (const linea of sinBom.split(/\r?\n/)) {
+    if (!linea.trim()) { filas.push([]); continue; }
+    const campos = [];
+    let act = '', comillas = false;
+    for (let i = 0; i < linea.length; i++) {
+      const c = linea[i];
+      if (comillas) {
+        if (c === '"' && linea[i + 1] === '"') { act += '"'; i++; }
+        else if (c === '"') comillas = false;
+        else act += c;
+      } else if (c === '"') comillas = true;
+      else if (c === sep) { campos.push(act); act = ''; }
+      else act += c;
+    }
+    campos.push(act);
+    filas.push(campos.map(s => s.trim()));
+  }
+  return filas;
+}
+
+function leerTexto(buf) {
+  // Excel en Windows guarda el CSV en ANSI: leerlo como UTF-8 convierte
+  // "Gestión" en basura. Se prueba estricto y si falla se cae a 1252.
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch (err) {
+    try { return new TextDecoder('windows-1252').decode(buf); }
+    catch (err2) { return buf.toString('latin1'); }
+  }
+}
+
+// Devuelve { filas:[{local_id, nombre, periodo, monto}], ignoradas:[...] }
+function interpretarObjetivos(texto) {
+  const grilla = partirCSV(texto);
+  const cab = grilla.find(f => f.length > 1);
+  if (!cab) return { error: 'La planilla está vacía.' };
+  const desde = grilla.indexOf(cab) + 1;
+  const anioHoy = Number(hoyComercial().slice(0, 4));
+
+  const col = cab.map(c => normalizar(c));
+  const iLocal = col.findIndex(c => ['local', 'nombre', 'id', 'sucursal'].includes(c));
+  if (iLocal < 0) return { error: 'Falta una columna "Local" en la primera fila.' };
+  const iPeriodo = col.findIndex(c => ['periodo', 'mes'].includes(c));
+  const iMonto = col.findIndex(c => ['objetivo', 'monto', 'importe'].includes(c));
+
+  // Formato largo (una fila por local y mes) o grilla (una columna por mes).
+  const columnas = iPeriodo >= 0 && iMonto >= 0
+    ? null
+    : cab.map((c, i) => (i === iLocal ? null : parsearPeriodo(c, anioHoy)));
+  if (columnas && !columnas.some(Boolean)) {
+    return { error: 'Ninguna columna parece un mes. Usá 2026-11, 11/2026 o "Noviembre".' };
+  }
+
+  const filas = [], ignoradas = [];
+  for (let n = desde; n < grilla.length; n++) {
+    const f = grilla[n];
+    if (!f.length || !f.some(c => c !== '')) continue;
+    const nro = n + 1;                       // como lo cuenta Excel
+    const local_id = resolverLocal(f[iLocal]);
+    if (!local_id) {
+      ignoradas.push({ fila: nro, motivo: `local desconocido: ${(f[iLocal] || '(vacío)').slice(0, 40)}` });
+      continue;
+    }
+    const celdas = columnas
+      ? columnas.map((p, i) => (p ? { periodo: p, txt: f[i] } : null)).filter(Boolean)
+      : [{ periodo: parsearPeriodo(f[iPeriodo], anioHoy), txt: f[iMonto] }];
+
+    for (const celda of celdas) {
+      if (!celda.periodo) {
+        ignoradas.push({ fila: nro, motivo: `mes ilegible: ${String(f[iPeriodo]).slice(0, 20)}` });
+        continue;
+      }
+      const monto = montoDeTexto(celda.txt);
+      if (monto === null) continue;          // celda vacía: no se toca nada
+      if (Number.isNaN(monto) || monto < 0 || monto > MAX_MONTO) {
+        ignoradas.push({ fila: nro, motivo: `importe inválido en ${celda.periodo}: ${String(celda.txt).slice(0, 20)}` });
+        continue;
+      }
+      filas.push({ local_id, periodo: celda.periodo, monto: Math.round(monto) });
+    }
+  }
+  return { filas, ignoradas };
+}
+
+app.get('/api/objetivos.csv', requiereLectura, (req, res) => {
+  const anio = Number(req.query.anio) || Number(hoyComercial().slice(0, 4));
+  const periodos = Array.from({ length: 12 }, (_, i) => `${anio}-${String(i + 1).padStart(2, '0')}`);
+  const cargados = new Map();
+  for (const r of db.prepare('SELECT local_id, periodo, monto FROM objetivos').all()) {
+    cargados.set(r.local_id + '|' + r.periodo, r.monto);
+  }
+  const lineas = [['Local', ...periodos].join(';')];
+  for (const L of LOC.filter(l => l.activo)) {
+    lineas.push([L.nombre, ...periodos.map(p => cargados.get(L.id + '|' + p) ?? '')].join(';'));
+  }
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="objetivos-${anio}.csv"`);
+  res.send('﻿' + lineas.join('\r\n') + '\r\n');   // BOM: Excel y los acentos
+});
+
+app.post('/api/objetivos/import',
+  express.raw({ type: '*/*', limit: '2mb' }),
+  requiereEscritura,
+  (req, res) => {
+    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from('');
+    if (!buf.length) return res.status(400).json({ error: 'ARCHIVO_VACIO' });
+
+    const r = interpretarObjetivos(leerTexto(buf));
+    if (r.error) return res.status(400).json({ error: 'PLANILLA', detalle: r.error });
+
+    const periodos = [...new Set(r.filas.map(f => f.periodo))].sort();
+    const locales = new Set(r.filas.map(f => f.local_id));
+    const resumen = {
+      a_cargar: r.filas.length,
+      locales: locales.size,
+      periodos,
+      ignoradas: r.ignoradas,
+    };
+
+    // Previsualización: se muestra exactamente lo que va a pasar antes de
+    // tocar nada. Importar sólo agrega o pisa lo que viene; lo que no está
+    // en la planilla queda como está.
+    if (req.query.preview === '1') return res.json({ preview: true, ...resumen });
+
+    const guardar = db.prepare(`INSERT INTO objetivos (local_id, periodo, monto)
+      VALUES (?, ?, ?) ON CONFLICT(local_id, periodo) DO UPDATE SET monto = excluded.monto`);
+    db.transaction(() => { for (const f of r.filas) guardar.run(f.local_id, f.periodo, f.monto); })();
+    res.json({ preview: false, ...resumen });
+  });
 
 app.put('/api/locales/:id/pos-id', requiereEscritura, (req, res) => {
   const id = resolverLocal(req.params.id);

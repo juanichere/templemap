@@ -229,14 +229,51 @@ entró es peor que no dejar editar.
 
 - **Clave en el POS** (`pos_id`). Arriba de la tabla avisa cuántos locales
   todavía no la tienen, porque hasta que se carguen sus ventas se rechazan.
-- **Objetivo diario.** Es el número contra el que se mide todo el tablero.
-  Ojo: los que vienen de fábrica salen de la curva del local y son un valor de
-  arranque, no un objetivo de administración. Hay que pisarlos.
-- **Objetivo del mes.** Vacío = derivado del diario día por día. Si se carga un
-  número, manda ese; vaciarlo vuelve al derivado.
+- **Objetivo del mes.** Es el número que manda.
+- **Objetivo de hoy.** Sale de repartir el del mes; no se edita a mano.
 
 Los importes entran como se escriben acá: `1.850.000,50`, `400.000.000` y
 `12500.75` se leen los tres bien.
+
+### El mes manda, no el día
+
+**Administración fija el objetivo del MES y el de cada día sale de repartirlo**
+según cuánto pesa ese día de la semana. Al revés —pedir un objetivo por día—
+serían 365 números por local y nadie los va a cargar.
+
+Y el reparto no es lineal: un sábado pesa 1,35 y un lunes 0,55, así que el
+objetivo de un sábado es más del doble que el del lunes aunque el mes sea el
+mismo. Los factores están en `locales.js`.
+
+Mientras un mes no tenga objetivo cargado se usa **un estimado** derivado del
+`objetivo_diario` del local, que es un valor de arranque inventado para que el
+tablero tenga contra qué medir desde el primer día. El panel lo dice en cada
+fila: **cargado** o **estimado**. Importa saber cuál de los dos estás mirando
+antes de discutir el número.
+
+### Cargar los objetivos por planilla
+
+En **Objetivos por planilla**: se baja una grilla de locales × meses, se llena
+en Excel y se vuelve a subir. Mismo ida y vuelta que el presupuesto en
+Aperturas, y por la misma razón: el equipo trabaja en Excel.
+
+- Primera columna **Local** (acepta el nombre, el id o el `pos_id`), y una
+  columna por mes. Los encabezados entienden `2026-11`, `11/2026`,
+  `Noviembre` y `nov-26`.
+- También acepta el formato largo: columnas `Local`, `Periodo`, `Objetivo`.
+- **Las celdas vacías no tocan nada.** Importar sólo agrega o pisa lo que
+  viene; lo que no está en la planilla queda como está, así que se puede subir
+  un mes suelto sin arrastrar el resto.
+- Siempre pasa por una **previsualización** que sale de leer la planilla
+  entera: lo que muestra es exactamente lo que va a pasar, no una estimación
+  aparte que puede mentir. Las filas con problemas se listan con su número
+  **como lo cuenta Excel**.
+- El CSV se lee probando **UTF-8 estricto y, si falla, windows-1252**: Excel en
+  Windows guarda en ANSI y leerlo como UTF-8 convierte "Gestión" en basura. El
+  que se baja lleva BOM para que Excel respete los acentos.
+
+`npm run probar:objetivos` prueba todo ese ida y vuelta contra un server
+corriendo, incluida la aritmética del reparto.
 
 Los dos le pegan a los mismos dos endpoints: `/api/estado` para el snapshot y
 `/api/stream` para lo que va pasando.
