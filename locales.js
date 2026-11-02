@@ -9,6 +9,11 @@
 // webhook, y es lo único que hay que completar para enchufarlo.
 // ---------------------------------------------------------------------------
 
+// ⚠️ `pico`, `ticket` y los objetivos que salen de ellos son valores de
+// arranque inventados para que el tablero tenga contra qué medir desde el
+// primer día. NO son facturación real de TEMPLE. Se reemplazan desde
+// Ajustes (/monitor.html) con los números de administración.
+
 // Peso de la demanda hora por hora, 0..23. Un bar factura de noche.
 const PERFILES = {
   noche:       [.55,.35,.15,.05,0,0,0,0,0,0,0,.10,.35,.45,.30,.20,.25,.45,.70,.95,1,1,.90,.75],
