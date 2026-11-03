@@ -106,6 +106,50 @@ body{
 .velos button:first-child{border-left:0}
 .velos button:hover{color:var(--paper);background:rgba(244,242,238,.07)}
 .velos button[aria-pressed="true"]{background:var(--yellow);color:var(--ink)}
+/* ---------- clima ---------- */
+#clima{
+  display:flex;align-items:center;gap:10px;padding:5px 11px;
+  background:var(--panel);border:1px solid var(--linea);
+}
+#clima .ico{display:block;width:26px;height:26px;color:var(--yellow);flex:none}
+#clima .ico svg{display:block;width:100%;height:100%}
+#clima .t{font-family:var(--cond);font-weight:700;font-size:21px;line-height:1;letter-spacing:.03em}
+#clima .c{font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--n500);white-space:nowrap}
+#clima .sol{
+  display:grid;gap:1px;padding-left:10px;border-left:1px solid var(--linea);
+  font-family:var(--cond);font-weight:600;font-size:11.5px;letter-spacing:.07em;
+  color:var(--n500);white-space:nowrap;
+}
+#clima .sol i{font-style:normal;color:var(--yellow)}
+/* En un celular el chip entero no entra al lado del reloj: queda la
+   temperatura y el ícono, que es lo que se mira de reojo. */
+@media (max-width:900px){ #clima .sol,#clima .c{display:none} }
+
+/* el clima del local, en su ficha */
+.climaLoc{
+  display:flex;align-items:center;gap:7px;margin-top:7px;
+  font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--n500);
+}
+.climaLoc svg{display:block;width:17px;height:17px;color:var(--n400);flex:none}
+.rfila i.tmp{
+  font-style:normal;font-family:var(--cond);font-weight:600;font-size:11px;
+  letter-spacing:.06em;color:var(--n500);margin-left:7px;
+}
+/* la marca de la fábrica, al lado del nombre */
+.fab{
+  display:inline-block;margin-left:6px;padding:0 4px;vertical-align:1px;
+  font-family:var(--cond);font-weight:700;font-size:9.5px;letter-spacing:.14em;
+  color:var(--ink);background:var(--cyan);
+}
+.teleClima{
+  display:flex;align-items:center;gap:9px;justify-content:flex-end;
+  font-family:var(--cond);font-weight:600;font-size:15px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--n500);margin-top:4px;
+}
+.teleClima svg{display:block;width:22px;height:22px;color:var(--yellow);flex:none}
+
 .conexion{
   font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.12em;
   text-transform:uppercase;min-height:34px;padding:0 12px;white-space:nowrap;
@@ -362,6 +406,17 @@ body{
         <div class="d" id="dReloj">Domingo</div>
       </div>
     </div>
+    <div id="clima" class="marca" hidden>
+      <span class="ico" id="climaIco"></span>
+      <div id="climaDatos">
+        <div class="t num" id="climaTemp">—</div>
+        <div class="c" id="climaTxt">—</div>
+      </div>
+      <div class="sol">
+        <div><i>&#8599;</i> <span class="num" id="climaSale">—</span></div>
+        <div><i>&#8600;</i> <span class="num" id="climaPone">—</span></div>
+      </div>
+    </div>
     <div class="velos marca" id="vistas" hidden>
       <button type="button" data-vista="pais" aria-pressed="false">País</button>
       <button type="button" data-vista="ciudad" aria-pressed="true">Ciudad</button>
@@ -383,6 +438,7 @@ body{
       <div class="teleReloj">
         <div class="num" id="teleHora">21:00</div>
         <div id="teleDia">Domingo</div>
+        <div class="teleClima" id="teleClima" hidden></div>
       </div>
     </div>
     <div class="teleAbajo">
@@ -416,7 +472,7 @@ body{
       <div class="tres">
         <div><div class="k">Tickets</div><div class="v num" id="totTk">0</div></div>
         <div><div class="k">Ticket prom.</div><div class="v num" id="totTp">$ 0</div></div>
-        <div><div class="k">Locales</div><div class="v num" id="totLc">17</div></div>
+        <div><div class="k">Locales</div><div class="v num" id="totLc">—</div></div>
       </div>
     </div>
 
@@ -427,6 +483,7 @@ body{
       </div>
       <div class="dir" id="dDir">—</div>
       <div class="chip" id="dChip">—</div>
+      <div class="climaLoc" id="dClima" hidden></div>
       <div class="tres">
         <div><div class="k" id="dKFact">Facturado hoy</div><div class="v num" id="dFact">$ 0</div></div>
         <div><div class="k">Tickets</div><div class="v num" id="dTk">0</div></div>
@@ -476,6 +533,7 @@ body{
 
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
+import { posicionSolar, horasSolares, luzDeAltitud, hhmm as hhmmSol } from './sol.mjs';
 
 /* ════════════════════════════════════════════════════════════════════════════
    1 · GEOGRAFÍA
@@ -592,6 +650,12 @@ const S = {
   fsumMes: 1,
   simulado: false,
   conectado: false,
+  // Dónde está el sol ahora y a qué hora sale y se pone hoy. Se calcula acá
+  // (sol.mjs), no se le pide a nadie.
+  sol: { altitud: 0.6, azimut: 0 },
+  horas: { amanecer: null, atardecer: null, mediodia: null },
+  luz: 1,
+  clima: null,
   cadena: {
     hoy: { monto: 0, tickets: 0 }, ayer: { monto: 0, tickets: 0 },
     mes: { monto: 0, tickets: 0 }, mesAnterior: { monto: 0, tickets: 0 },
@@ -661,6 +725,7 @@ function sincronizar(e) {
     Object.assign(L, {
       nombre: d.nombre, dir: d.dir, barrio: d.barrio,
       lat: d.lat, lng: d.lng, mapa: !!d.en_mapa,
+      tipo: d.tipo || 'bar', dir_a_confirmar: !!d.dir_a_confirmar,
       objetivo: d.objetivo_diario || 1,
       objetivoMes: d.objetivo_mensual || 1,
       curva: d.curva,
@@ -1258,18 +1323,29 @@ geoAro.rotateX(-Math.PI / 2);
 
 // El mundo se arma recién cuando llega el primer snapshot: cuántos locales
 // hay, dónde están y cuáles van en el mapa lo decide el server.
+// El humo de la chimenea de la fábrica. Lo llena construirLocales() y lo mueve
+// animarClima(), así que vive acá afuera.
+const HUMO = [];
+
 function construirLocales() {
 for (const L of LOCALES.filter(l => l.mapa)) {
   const [x, z] = proj(L.lat, L.lng);
   L.wx = x; L.wz = z;
 }
 
-// Casa Temple y Soho están en la misma esquina (Costa Rica 4677 y 4699): a esta
-// escala quedarían uno encima del otro, así que se separan lo justo para poder
-// tocarlos. La dirección real sigue siendo la de la ficha.
+/* Casa Temple y Soho están en la misma esquina (Costa Rica 4677 y 4699) y a
+   26 unidades por kilómetro quedarían uno encima del otro.
+
+   La separación es el ancho de la vereda de un local y nada más: 19 unidades,
+   unos 730 metros. Antes eran 52 —dos kilómetros— y eso mentía fuerte: los
+   mandaba a distintos barrios y de paso empujaba a Hollywood y a Recoleta, que
+   están bien donde están. Mejor dos edificios pegados en la misma esquina, que
+   es lo que son, aunque la vereda se les solape.
+
+   La dirección real siempre es la de la ficha. */
 (function separar() {
   const mapa = LOCALES.filter(L => L.mapa);
-  const MIN = 52;
+  const MIN = 19;
   for (let it = 0; it < 60; it++) {
     let movio = false;
     for (let i = 0; i < mapa.length; i++) {
@@ -1289,26 +1365,95 @@ for (const L of LOCALES.filter(l => l.mapa)) {
   }
 })();
 
-let idxLocal = 0;
+/* Las placas tienen tamaño fijo en pantalla, así que dos locales a tres cuadras
+   se tapan igual. Cada uno cuelga a distinta altura, y la altura sale de mirar
+   a los vecinos: el escalón más bajo que no esté usado por otro local a menos
+   de 90 unidades (3,5 km). Antes era el índice del array módulo 4, que
+   alcanzaba cuando se separaban dos kilómetros; a escala real, no: Soho,
+   Hollywood y Casa Temple caían en el mismo renglón y se pisaban. */
+(function escalonar() {
+  const mapa = LOCALES.filter(L => L.mapa).sort((a, b) => a.wx - b.wx);
+  for (const L of mapa) {
+    const tomados = new Set(mapa
+      .filter(O => O !== L && O.escalon !== undefined
+        && Math.hypot(O.wx - L.wx, O.wz - L.wz) < 90)
+      .map(O => O.escalon));
+    let k = 0;
+    while (tomados.has(k)) k++;
+    L.escalon = k;
+  }
+})();
+
 for (const L of LOCALES) {
   if (!L.mapa) continue;
   const g = new THREE.Group();
   g.position.set(L.wx, 0.12, L.wz);
-  // Soho, Hollywood y Casa Temple están a tres cuadras entre sí, igual que
-  // Monroe y Barrio Chino. Con placas de tamaño fijo se pisarían, así que cada
-  // una cuelga a distinta altura; el orden del array deja a los vecinos en
-  // escalones distintos.
-  const escalon = idxLocal++ % 4;
 
-  const ANCHO = 15, FONDO = 12, ALTO = 19;
+  /* Temple Lab no es un bar: es la fábrica de cerveza, y se dibuja como una.
+     Nave baja, tres tanques de acero y una chimenea con humo — desde arriba se
+     reconoce sin leer el cartel, que es justo para lo que sirve el mapa.
 
-  const cuerpo = new THREE.Mesh(
-    new THREE.BoxGeometry(ANCHO, ALTO, FONDO),
-    new THREE.MeshStandardMaterial({ color: 0x2b2730, roughness: 0.78 })
-  );
-  cuerpo.position.y = ALTO / 2;
-  cuerpo.castShadow = !liviano;
-  cuerpo.receiveShadow = !liviano;
+     El cuerpo es un Group y no un Mesh, para los dos casos. Pivotea en el
+     piso, así que el golpe elástico de cada venta lo estira hacia arriba sin
+     tener que recolocarlo. */
+  const esFab = L.tipo === 'fabrica';
+  const ANCHO = 15, FONDO = 12;
+  const ALTO = esFab ? 27 : 19;            // la chimenea manda la altura
+  const Y_CARTEL = esFab ? 12.4 : ALTO - 2.6;
+
+  const cuerpo = new THREE.Group();
+  if (esFab) {
+    const matNave = new THREE.MeshStandardMaterial({ color: 0x2f2b38, roughness: 0.8 });
+    const matAcero = new THREE.MeshStandardMaterial({
+      color: 0xbac5d2, roughness: 0.28, metalness: 0.78,
+    });
+
+    const nave = new THREE.Mesh(new THREE.BoxGeometry(14.5, 11, 15.5), matNave);
+    nave.position.set(-3.2, 5.5, 0);
+    cuerpo.add(nave);
+
+    // los fermentadores, en fila sobre el costado
+    const geoTq = new THREE.CylinderGeometry(2.45, 2.45, 12, 14);
+    const geoTapa = new THREE.SphereGeometry(2.45, 14, 7, 0, 6.3, 0, Math.PI / 2);
+    for (let k = 0; k < 3; k++) {
+      const z = -5 + k * 5;
+      const t = new THREE.Mesh(geoTq, matAcero);
+      t.position.set(7.6, 6, z);
+      const tapa = new THREE.Mesh(geoTapa, matAcero);
+      tapa.position.set(7.6, 12, z);
+      cuerpo.add(t, tapa);
+    }
+
+    const chim = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.75, 24, 12), matNave);
+    chim.position.set(-9.4, 12, -5.2);
+    const banda = new THREE.Mesh(new THREE.CylinderGeometry(1.34, 1.34, 2.4, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfae100, roughness: 0.6 }));
+    banda.position.set(-9.4, 21.2, -5.2);
+    cuerpo.add(chim, banda);
+
+    // El humo sale de la chimenea y se va con el viento. Se reusa la textura
+    // del brillo de los locales: es el mismo borrón redondo y difuso.
+    for (let k = 0; k < 5; k++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: TEX_BRILLO, transparent: true, opacity: 0, depthWrite: false,
+        color: 0x8c8798,
+      }));
+      sp.scale.setScalar(9);
+      g.add(sp);
+      HUMO.push({ sp, t: k / 5, base: new THREE.Vector3(L.wx - 9.4, 24.5, L.wz - 5.2) });
+    }
+
+    if (!liviano) for (const m of cuerpo.children) { m.castShadow = true; m.receiveShadow = true; }
+  } else {
+    const caja = new THREE.Mesh(
+      new THREE.BoxGeometry(ANCHO, ALTO, FONDO),
+      new THREE.MeshStandardMaterial({ color: 0x2b2730, roughness: 0.78 })
+    );
+    caja.position.y = ALTO / 2;
+    caja.castShadow = !liviano;
+    caja.receiveShadow = !liviano;
+    cuerpo.add(caja);
+  }
   g.add(cuerpo);
 
   // planta baja en ink, con la vereda
@@ -1340,7 +1485,7 @@ for (const L of LOCALES) {
     const p = new THREE.Mesh(geoCartel, matCartel);
     const ang = k * Math.PI / 2;
     const r = (k % 2 ? FONDO : ANCHO) / 2 + 1.5;
-    p.position.set(Math.sin(ang) * r, ALTO - 2.6, Math.cos(ang) * r);
+    p.position.set(Math.sin(ang) * r, Y_CARTEL, Math.cos(ang) * r);
     p.rotation.y = ang;
     g.add(p);
   }
@@ -1379,7 +1524,7 @@ for (const L of LOCALES) {
     sizeAttenuation: false,              // tamaño fijo en pantalla: se lee de lejos
   }));
   etiqueta.scale.set(0.116, 0.0363, 1);
-  etiqueta.position.y = ALTO + 14 + escalon * 23;
+  etiqueta.position.y = ALTO + 14 + L.escalon * 30;
   etiqueta.renderOrder = 10;
   g.add(etiqueta);
 
@@ -1394,7 +1539,7 @@ for (const L of LOCALES) {
 
   Object.assign(L, {
     mundo: g, cuerpo, haz, hazOut, hazIn, anillo, brillo, etiqueta, etiquetaCv: E,
-    aroT: 99, alto: ALTO,
+    aroT: 99, alto: ALTO, esFabrica: esFab,
   });
   grupoLocales.add(g);
 }
@@ -1939,6 +2084,12 @@ function sonar(tipo) {
     [659, 784, 988, 1319].forEach((f, i) => nota(f, t0 + i * 0.09, 0.22, 0.06));
     return;
   }
+  // Un trueno es ruido grave y largo, no una nota: dos golpes bajos corridos.
+  if (tipo === 'trueno') {
+    nota(52, t0, 1.5, 0.05);
+    nota(38, t0 + 0.16, 2.2, 0.045);
+    return;
+  }
   if (performance.now() - ultimoBlip < 90) return;   // en ×300 serían 10 por segundo
   ultimoBlip = performance.now();
   nota(1047, t0, 0.06, 0.035);
@@ -2162,7 +2313,9 @@ function construirRanking() {
     b.type = 'button';
     b.className = 'fila';
     b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = `<div class="p"></div><div class="n">${esc(it.nombre)}</div><div class="m num"></div>
+    const marca = (it.L || (it.M && it.M.local) || {}).tipo === 'fabrica'
+      ? '<span class="fab">Fáb</span>' : '';
+    b.innerHTML = `<div class="p"></div><div class="n">${esc(it.nombre)}${marca}</div><div class="m num"></div>
       <div class="barra"><i></i></div>
       <div class="pc"><b></b><span></span></div>`;
     b.addEventListener('click', () => {
@@ -2197,9 +2350,9 @@ for (let i = 0; i < 12; i++) {
 for (const L of LOCALES.filter(l => !l.mapa)) {
   const d = document.createElement('div');
   d.className = 'rfila';
-  d.innerHTML = `<span>${esc(L.nombre)}</span><b class="num">—</b>`;
+  d.innerHTML = `<span>${esc(L.nombre)}<i class="tmp"></i></span><b class="num">—</b>`;
   $('resto').appendChild(d);
-  rfilas.push({ L, b: d.querySelector('b') });
+  rfilas.push({ L, b: d.querySelector('b'), tmp: d.querySelector('i.tmp') });
 }
 {
   const d = document.createElement('div');
@@ -2252,8 +2405,12 @@ function pintarDetalle() {
   if (!L) return;
   const es = estado(L), mes = S.modo === 'mes';
   const v = valorDe(L), tk = ticketsDe(L), esp = esperadoDe(L);
-  $('dTit').textContent = L.nombre;
-  $('dDir').textContent = `${L.dir} · ${L.barrio}`;
+  $('dTit').innerHTML = esc(L.nombre)
+    + (L.tipo === 'fabrica' ? '<span class="fab">Fábrica</span>' : '');
+  // La dirección del Lab es la mejor que pudimos confirmar, no un dato que nos
+  // haya pasado nadie: la ficha lo dice en vez de hacerla pasar por cierta.
+  $('dDir').textContent = `${L.dir} · ${L.barrio}`
+    + (L.dir_a_confirmar ? ' · dirección a confirmar' : '');
   const chip = $('dChip');
   const pc = esp > 0 ? Math.round(v / esp * 100) : 0;
   chip.textContent = esp > 0 ? `${TEXTO_ESTADO[es]} · ${pc}%` : TEXTO_ESTADO[es];
@@ -2265,6 +2422,7 @@ function pintarDetalle() {
   $('spkIzq').textContent = mes ? '1' : '06h';
   $('spkMed').textContent = mes ? 'Facturación por día' : 'Facturación por hora';
   $('spkDer').textContent = mes ? String(S.diasMes) : '05h';
+  pintarClimaLocal(L);
   pintarSpark(L);
 }
 
@@ -2279,6 +2437,7 @@ function pintarHUD() {
     ? 'Facturación de la cadena · este mes' : 'Facturación de la cadena · hoy';
   $('rotObj').textContent = mes ? 'Objetivo del mes' : 'Objetivo del día';
   $('totHoy').textContent = plata(vC);
+  $('totLc').textContent = String(LOCALES.length);
   $('totTk').textContent = fmtMoneda.format(tkC);
   $('totTp').textContent = tkC ? plata(vC / tkC) : '$ 0';
 
@@ -2455,51 +2614,462 @@ $('plegar').addEventListener('click', () => {
 });
 
 /* ════════════════════════════════════════════════════════════════════════════
-   8 · DÍA Y NOCHE
+   8 · SOL, CLIMA Y CICLO DIARIO
    ════════════════════════════════════════════════════════════════════════════ */
+
+/* El sol se calcula, el clima se pregunta.
+
+   La posición del sol es astronomía (sol.mjs): el mismo número siempre, sin
+   depender de que nadie esté arriba. El ciclo día/noche ya no corre con una
+   ventana fija de horas: a esta latitud el atardecer se mueve dos horas y
+   cuarto entre junio y diciembre, y el sol de invierno llega a 32° contra los
+   79° de verano. Eso se ve, y ahora se ve bien.
+
+   El clima no se puede calcular, así que lo trae el servidor (clima.js) y el
+   tablero lo pide cada diez minutos. Si no viene, el mundo se dibuja
+   despejado: es un adorno, no una dependencia. */
+
+let claveDia = '';
+function refrescarSol() {
+  const ahora = new Date();
+  S.sol = posicionSolar(ahora, CENTRO.lat, CENTRO.lng);
+  S.luz = luzDeAltitud(S.sol.altitud);
+  // Amanecer y atardecer cambian una vez por día. La zona entra en la clave
+  // porque llega con el primer snapshot, después de este primer cálculo.
+  const clave = ahora.toISOString().slice(0, 10) + S.zona;
+  if (clave !== claveDia) {
+    claveDia = clave;
+    S.horas = horasSolares(ahora, CENTRO.lat, CENTRO.lng, S.zona);
+  }
+}
+refrescarSol();
+
+/* ── el clima de cada local ──────────────────────────────────────────────── */
+
+const CLIMA_CADA = 10 * 60 * 1000;
+const climaDeLocal = L => (S.clima && L ? S.clima[L.id] || null : null);
+// El mundo 3D es el de Buenos Aires, así que el que manda es el de un local de
+// CABA; si no hay ninguno, el primero que haya.
+const climaCiudad = () =>
+  climaDeLocal(LOCALES.find(L => L.mapa)) || climaDeLocal(LOCALES[0]);
+
+async function pedirClima() {
+  try {
+    const r = await api('/api/clima');
+    // ok:false es el caso normal cuando la API de afuera no contesta: se deja
+    // lo que hubiera y no se pisa con nada.
+    if (r && r.ok && r.locales) { S.clima = r.locales; pintarClima(); }
+  } catch (err) {
+    // Un tablero sin clima funciona; uno que explota por el clima, no.
+    console.warn('sin clima:', err.message || err);
+  }
+}
+
+/* ── íconos ──────────────────────────────────────────────────────────────── */
+
+// Dibujados a mano y no emoji: el tablero es todo líneas de 1px y mayúsculas
+// condensadas, y un emoji de colores al lado del reloj se ve pegado con cinta.
+// Heredan el color del texto, así que sirven en la barra y en la ficha.
+const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+  aria-hidden="true">${d}</svg>`;
+
+const RAYOS = [0, 45, 90, 135, 180, 225, 270, 315]
+  .map(a => `<line x1="12" y1="2.4" x2="12" y2="4.9" transform="rotate(${a} 12 12)"/>`).join('');
+const NUBE = '<path d="M6.8 18.4h10.6a3.1 3.1 0 0 0 .3-6.2 4.9 4.9 0 0 0-9.3-1.5 3.85 3.85 0 0 0-1.6 7.7z"/>';
+const NUBE_ALTA = '<path d="M6.8 15.4h10.6a3.1 3.1 0 0 0 .3-6.2 4.9 4.9 0 0 0-9.3-1.5 3.85 3.85 0 0 0-1.6 7.7z"/>';
+const gotas = largo => [8.5, 12, 15.5]
+  .map((x, i) => `<line x1="${x}" y1="${17.6 + i % 2}" x2="${x - 1}" y2="${17.6 + i % 2 + largo}"/>`).join('');
+
+const ICONOS = {
+  sol: SVG(`<circle cx="12" cy="12" r="4.1"/>${RAYOS}`),
+  luna: SVG('<path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.3 8.3 0 1 0 20 14.5z"/>'),
+  nubes: SVG(NUBE),
+  parcial: SVG(`<circle cx="7.6" cy="7.4" r="2.7"/>
+    <line x1="7.6" y1="2.3" x2="7.6" y2="3.6"/><line x1="2.5" y1="7.4" x2="3.8" y2="7.4"/>
+    <line x1="3.9" y1="3.7" x2="4.8" y2="4.6"/><line x1="11.3" y1="3.7" x2="10.4" y2="4.6"/>
+    ${NUBE}`),
+  niebla: SVG(`<line x1="3.5" y1="8.5" x2="20.5" y2="8.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/>
+    <line x1="3.5" y1="15.5" x2="20.5" y2="15.5"/><line x1="6.5" y1="19" x2="17.5" y2="19"/>`),
+  llovizna: SVG(NUBE_ALTA + gotas(2.1)),
+  lluvia: SVG(NUBE_ALTA + gotas(4.2)),
+  tormenta: SVG(`${NUBE_ALTA}<path d="M13.2 16.4 10 20.6h2.6L11.8 24"/>`),
+  nieve: SVG(`${NUBE_ALTA}<line x1="8.6" y1="17.6" x2="8.6" y2="21"/>
+    <line x1="7.1" y1="18.4" x2="10.1" y2="20.2"/><line x1="10.1" y1="18.4" x2="7.1" y2="20.2"/>
+    <line x1="15.4" y1="17.6" x2="15.4" y2="21"/>
+    <line x1="13.9" y1="18.4" x2="16.9" y2="20.2"/><line x1="16.9" y1="18.4" x2="13.9" y2="20.2"/>`),
+};
+
+function svgClima(c) {
+  if (!c) return '';
+  if (c.tipo === 'despejado') {
+    // De noche no hay sol que dibujar, y una luna dice la hora de un vistazo.
+    if (!c.de_dia && S.sol.altitud < 0) return ICONOS.luna;
+    return c.nubes >= 25 ? ICONOS.parcial : ICONOS.sol;
+  }
+  if (c.tipo === 'nubes') return c.nubes >= 80 ? ICONOS.nubes : ICONOS.parcial;
+  return ICONOS[c.tipo] || ICONOS.nubes;
+}
+
+const grados = t => (t == null ? '—' : `${Math.round(t)}°`);
+
+function pintarClima() {
+  const c = climaCiudad();
+  // El chip se muestra siempre: el amanecer y el atardecer se calculan acá y
+  // se saben aunque la API del clima no conteste. Lo que falta es la mitad de
+  // la temperatura, no el chip entero.
+  $('clima').hidden = false;
+  $('climaDatos').hidden = !c;
+  $('climaIco').innerHTML = c ? svgClima(c)
+    : (S.sol.altitud >= 0 ? ICONOS.sol : ICONOS.luna);
+  if (c) {
+    $('climaTemp').textContent = grados(c.temp);
+    $('climaTxt').textContent = c.texto;
+    $('clima').title = `${c.texto} · ${grados(c.temp)} (se siente ${grados(c.aparente)})`
+      + ` · ${c.nubes}% de nubes · viento ${c.viento} km/h · humedad ${c.humedad}%`;
+  } else {
+    $('clima').title = `El sol sale ${hhmmSol(S.horas.amanecer)} y se pone `
+      + `${hhmmSol(S.horas.atardecer)}. Sin dato de clima.`;
+  }
+  leerClima();                      // y de acá lo toma el mundo
+  $('climaSale').textContent = hhmmSol(S.horas.amanecer);
+  $('climaPone').textContent = hhmmSol(S.horas.atardecer);
+
+  const t = $('teleClima');
+  t.hidden = !c;
+  if (c) t.innerHTML = `${svgClima(c)}<span>${grados(c.temp)} · ${esc(c.texto)}</span>`;
+
+  for (const r of rfilas) {
+    const d = climaDeLocal(r.L);
+    if (r.tmp) r.tmp.textContent = d ? grados(d.temp) : '';
+  }
+  if (S.sel && !tvOn) pintarClimaLocal(S.sel);
+}
+
+function pintarClimaLocal(L) {
+  const c = climaDeLocal(L);
+  const el = $('dClima');
+  el.hidden = !c;
+  if (!c) return;
+  el.innerHTML = `${svgClima(c)}<span>${grados(c.temp)} · ${esc(c.texto)}</span>`;
+}
+
+/* ── lo que el clima le hace al mundo ────────────────────────────────────── */
+
+/* El clima real llega de golpe cada diez minutos, pero el mundo no puede
+   pasar de despejado a tormenta en un cuadro: todo lo que se ve se persigue
+   suavemente hacia el valor nuevo. */
+const CL = {
+  replica: false,
+  nubes: 0, dNubes: 0,          // 0..1
+  lluvia: 0, dLluvia: 0,        // 0..1, incluye llovizna y tormenta
+  nieve: 0, dNieve: 0,
+  niebla: 0, dNiebla: 0,
+  mojado: 0, dMojado: 0,
+  tormenta: false,
+  viento: 0.35,
+  rayo: 0, proxRayo: 6,
+};
+
+function leerClima() {
+  const c = climaCiudad();
+  if (!c) { CL.dNubes = CL.dLluvia = CL.dNieve = CL.dNiebla = CL.dMojado = 0; CL.tormenta = false; return; }
+  const agua = c.tipo === 'lluvia' || c.tipo === 'llovizna' || c.tipo === 'tormenta';
+  CL.dNubes = Math.min(1, (c.nubes || 0) / 100);
+  CL.dLluvia = agua ? c.fuerza : 0;
+  CL.dNieve = c.tipo === 'nieve' ? c.fuerza : 0;
+  CL.dNiebla = c.tipo === 'niebla' ? c.fuerza : 0;
+  // La calle queda mojada un rato después de que paró: con precipitación
+  // medida arranca en brillo total y baja sola.
+  CL.dMojado = agua || (c.precip || 0) > 0 ? Math.max(0.45, CL.dLluvia) : 0;
+  CL.tormenta = c.tipo === 'tormenta';
+  CL.viento = Math.max(0.15, Math.min(1.4, (c.viento || 6) / 28));
+}
+
+/* ── nubes ───────────────────────────────────────────────────────────────── */
+
+// Parches horizontales que pasan por encima de la ciudad. Van con opacidad muy
+// baja a propósito: lo que se mira es la ciudad, y una capa de nubes opaca
+// taparía justo los locales. Con 0.2 se lee como cielo cubierto y la maqueta
+// sigue leyéndose debajo.
+const texNube = (() => {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 128;
+  const g = cv.getContext('2d');
+  // Varios borrones encimados: un solo degradado radial se ve como una pelota.
+  for (let i = 0; i < 7; i++) {
+    const x = 34 + Math.random() * 60, y = 40 + Math.random() * 48;
+    const r = 20 + Math.random() * 26;
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, 'rgba(255,255,255,.5)');
+    rg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = rg;
+    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+
+const grupoClima = new THREE.Group();
+escena.add(grupoClima);
+
+const PARCHES = [];
+{
+  const mat = new THREE.MeshBasicMaterial({
+    map: texNube, transparent: true, opacity: 0, depthWrite: false,
+    color: 0xdfe4ef, side: THREE.DoubleSide,
+  });
+  const n = liviano ? 9 : 16;
+  for (let i = 0; i < n; i++) {
+    const w = 230 + Math.random() * 230;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w * (0.6 + Math.random() * 0.5)), mat);
+    m.rotation.x = -Math.PI / 2;
+    m.rotation.z = Math.random() * 6.3;
+    m.position.set((Math.random() - 0.5) * 900, 150 + Math.random() * 75, (Math.random() - 0.5) * 900);
+    grupoClima.add(m);
+    PARCHES.push(m);
+  }
+  PARCHES.mat = mat;
+}
+
+/* ── lluvia ──────────────────────────────────────────────────────────────── */
+
+// Rayitas y no puntos: una gota de lluvia vista de lejos es una raya, y con
+// puntos parece nieve. Cada gota son dos vértices y se mueven todos en un solo
+// buffer, así que 1400 gotas no cuestan nada.
+const LLUVIA = (() => {
+  const n = liviano ? 600 : 1500;
+  const pos = new Float32Array(n * 6);
+  const vel = new Float32Array(n);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const m = new THREE.LineBasicMaterial({
+    color: 0xb9dcff, transparent: true, opacity: 0, depthWrite: false,
+  });
+  const l = new THREE.LineSegments(g, m);
+  l.frustumCulled = false;
+  grupoClima.add(l);
+  for (let i = 0; i < n; i++) {
+    pos[i * 6 + 1] = Math.random() * 300;
+    vel[i] = 230 + Math.random() * 190;
+  }
+  return { n, pos, vel, geo: g, mat: m, malla: l, largo: 7 };
+})();
+
+/* ── nieve ───────────────────────────────────────────────────────────────── */
+
+// Para la ciudad es un lujo inútil —en Buenos Aires nevó una vez en un siglo—
+// pero la cadena llega a Bariloche y a Río Gallegos, y cuando el tablero mire
+// para allá tiene que saber dibujarlo.
+const NIEVE = (() => {
+  const n = liviano ? 320 : 800;
+  const pos = new Float32Array(n * 3);
+  const fase = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 900;
+    pos[i * 3 + 1] = Math.random() * 300;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 900;
+    fase[i] = Math.random() * 6.3;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const m = new THREE.PointsMaterial({
+    color: 0xf2f6ff, size: 2.6, transparent: true, opacity: 0,
+    depthWrite: false, sizeAttenuation: true,
+  });
+  const pt = new THREE.Points(g, m);
+  pt.frustumCulled = false;
+  grupoClima.add(pt);
+  return { n, pos, fase, geo: g, mat: m, malla: pt };
+})();
+
+function animarClima(dt) {
+  const k = 1 - Math.exp(-0.5 * dt);          // ~2 s para acomodarse
+  CL.nubes += (CL.dNubes - CL.nubes) * k;
+  CL.lluvia += (CL.dLluvia - CL.lluvia) * k;
+  CL.nieve += (CL.dNieve - CL.nieve) * k;
+  CL.niebla += (CL.dNiebla - CL.niebla) * k;
+  CL.mojado += (CL.dMojado - CL.mojado) * k;
+
+  const enCiudad = S.vista === 'ciudad';
+  grupoClima.visible = enCiudad;
+  if (!enCiudad) return;
+
+  const cx = CAM.obj.x, cz = CAM.obj.z;
+  const vx = Math.sin(S.sol.azimut + 2.1) * CL.viento;   // una dirección cualquiera, estable
+  const vz = Math.cos(S.sol.azimut + 2.1) * CL.viento;
+
+  // nubes
+  PARCHES.mat.opacity = CL.nubes * 0.2;
+  if (CL.nubes > 0.02 && !quieto) {
+    for (const m of PARCHES) {
+      m.position.x += vx * 7 * dt;
+      m.position.z += vz * 7 * dt;
+      // las vuelve a tirar del otro lado cuando se van muy lejos
+      if (m.position.x - cx > 520) m.position.x -= 1040;
+      if (m.position.x - cx < -520) m.position.x += 1040;
+      if (m.position.z - cz > 520) m.position.z -= 1040;
+      if (m.position.z - cz < -520) m.position.z += 1040;
+    }
+  }
+
+  // lluvia
+  const op = CL.lluvia;
+  LLUVIA.mat.opacity = op * 0.5;
+  LLUVIA.malla.visible = op > 0.01;
+  if (LLUVIA.malla.visible && !quieto) {
+    const largo = 3 + CL.lluvia * 6;
+    const p = LLUVIA.pos;
+    const activas = Math.round(LLUVIA.n * Math.min(1, 0.25 + op));
+    for (let i = 0; i < LLUVIA.n; i++) {
+      const o = i * 6;
+      if (i >= activas) { p[o + 1] = p[o + 4] = -50; continue; }
+      let y = p[o + 1] - LLUVIA.vel[i] * (0.5 + op * 0.7) * dt;
+      let x = p[o], z = p[o + 2];
+      x += vx * 60 * dt; z += vz * 60 * dt;
+      if (y < 0 || Math.abs(x - cx) > 470 || Math.abs(z - cz) > 470) {
+        y = 280 + Math.random() * 40;
+        x = cx + (Math.random() - 0.5) * 900;
+        z = cz + (Math.random() - 0.5) * 900;
+      }
+      p[o] = x; p[o + 1] = y; p[o + 2] = z;
+      // la punta de arriba, inclinada contra el viento
+      p[o + 3] = x - vx * largo * 0.9;
+      p[o + 4] = y + largo;
+      p[o + 5] = z - vz * largo * 0.9;
+    }
+    LLUVIA.geo.attributes.position.needsUpdate = true;
+  }
+
+  // nieve
+  NIEVE.mat.opacity = CL.nieve * 0.85;
+  NIEVE.malla.visible = CL.nieve > 0.01;
+  if (NIEVE.malla.visible && !quieto) {
+    const p = NIEVE.pos, t = performance.now() / 1000;
+    for (let i = 0; i < NIEVE.n; i++) {
+      const o = i * 3;
+      let y = p[o + 1] - (14 + CL.nieve * 22) * dt;
+      let x = p[o] + (Math.sin(t * 0.6 + NIEVE.fase[i]) * 7 + vx * 16) * dt;
+      let z = p[o + 2] + (Math.cos(t * 0.5 + NIEVE.fase[i]) * 7 + vz * 16) * dt;
+      if (y < 0 || Math.abs(x - cx) > 470 || Math.abs(z - cz) > 470) {
+        y = 260 + Math.random() * 50;
+        x = cx + (Math.random() - 0.5) * 900;
+        z = cz + (Math.random() - 0.5) * 900;
+      }
+      p[o] = x; p[o + 1] = y; p[o + 2] = z;
+    }
+    NIEVE.geo.attributes.position.needsUpdate = true;
+  }
+
+  // humo de la chimenea de la fábrica, arrastrado por el mismo viento
+  if (HUMO.length && !quieto) {
+    for (const h of HUMO) {
+      h.t += dt * 0.2;
+      if (h.t > 1) h.t -= 1;
+      const u = h.t;
+      h.sp.position.set(h.base.x + vx * 38 * u, h.base.y + u * 44, h.base.z + vz * 38 * u);
+      h.sp.scale.setScalar(7 + u * 16);
+      // De día se recorta contra el cielo; de noche cinco borrones blancos
+      // encimados se leerían como un reflector, no como humo.
+      h.sp.material.opacity = (1 - u) * 0.17 * Math.min(1, u / 0.12) * (0.25 + S.luz * 0.75);
+    }
+  }
+
+  /* Relámpagos, cada 6-18 s y sólo con tormenta. Un rayo real parpadea: hay un
+     golpe, cae, y vuelve un segundo más chico. Y el trueno llega después —el
+     sonido tarda— así que va con casi un segundo de retardo. */
+  if (CL.rayo > 0) {
+    CL.rayo = Math.max(0, CL.rayo - dt * 5.5);
+    if (CL.rayo > 0 && CL.rayo < 0.42 && !CL.replica) { CL.replica = true; CL.rayo = 0.6; }
+  }
+  if (CL.tormenta && !quieto) {
+    CL.proxRayo -= dt;
+    if (CL.proxRayo <= 0) {
+      CL.proxRayo = 6 + Math.random() * 12;
+      CL.rayo = 1;
+      CL.replica = false;
+      setTimeout(() => sonar('trueno'), 850);
+    }
+  }
+}
+
+/* ── el ciclo ────────────────────────────────────────────────────────────── */
 
 // La noche no es realista a propósito: es noche de videojuego, violeta y
 // saturada, para que la ciudad se vea en vez de desaparecer en negro.
 const C_CIELO_DIA = new THREE.Color(0x7fc6ef);
 const C_CIELO_NOCHE = new THREE.Color(0x2e1f52);
+const C_CIELO_GRIS = new THREE.Color(0x6d7384);     // cubierto
 const C_SOL_DIA = new THREE.Color(0xfff2d8);
 const C_SOL_BAJO = new THREE.Color(0xff8a4c);
 const C_LUNA = new THREE.Color(0x9aa6ff);
+const C_SUELO_SECO = new THREE.Color(0xffffff);
+const C_SUELO_MOJADO = new THREE.Color(0x7e8798);
 const cAux = new THREE.Color();
+const cAux2 = new THREE.Color();
 const fondo = new THREE.Color(0x191723);
 escena.background = fondo;
 
-function luzDelDia(h) {
-  const t = (h - 6.4) / 13.4;
-  if (t <= 0 || t >= 1) return 0;
-  return Math.sin(t * Math.PI);
-}
+const GRA = 180 / Math.PI;
 
 function cicloDiario() {
-  const d = luzDelDia(S.hora);
+  // Luz geométrica (dónde está el sol) y luz efectiva (cuánta pasa el cielo).
+  const bruta = S.luz;
+  const velo = CL.nubes * 0.55 + CL.niebla * 0.25;
+  const d = bruta * (1 - Math.min(0.75, velo));
   const noche = 1 - Math.min(1, d * 2.6);
+  const alturaG = S.sol.altitud * GRA;
 
-  cAux.copy(C_CIELO_NOCHE).lerp(C_CIELO_DIA, Math.min(1, d * 1.5));
+  // cielo: de noche a día, y de ahí hacia el gris si está cubierto
+  cAux.copy(C_CIELO_NOCHE).lerp(C_CIELO_DIA, Math.min(1, bruta * 1.5));
+  cAux.lerp(C_CIELO_GRIS, CL.nubes * 0.55 * Math.min(1, bruta * 2.2));
+  // el relámpago blanquea todo por un instante
+  if (CL.rayo > 0) cAux.lerp(cAux2.setHex(0xe8ecff), CL.rayo * 0.33);
   fondo.copy(cAux);
   escena.fog.color.copy(cAux);
-  escena.fog.density = 0.0005 + (1 - d) * 0.00022;
+  escena.fog.density = 0.0005 + (1 - d) * 0.00022
+    + CL.niebla * 0.0022 + CL.lluvia * 0.0004;      // la niebla es de verdad niebla
 
-  const ang = (S.hora / 24) * Math.PI * 2 - Math.PI / 2;
-  const alt = 0.14 + Math.max(0.04, d) * 0.9;
-  sol.position.set(Math.cos(ang) * 420, alt * 520, Math.sin(ang) * 300 + 60);
+  /* El sol va donde está el sol: azimut real desde el norte, altura real.
+     En el mundo +x es el este y −z el norte, así que el mediodía de acá lo
+     pone al norte y las sombras caen al sur, como corresponde al hemisferio
+     en el que estamos. Debajo del horizonte se usa el punto antisolar, que es
+     más o menos donde está la luna llena: sale cuando el sol se pone. */
+  const bajo = S.sol.altitud < 0;
+  const az = bajo ? S.sol.azimut + Math.PI : S.sol.azimut;
+  const al = bajo ? -S.sol.altitud : S.sol.altitud;
+  const R = 620, ch = Math.cos(al);
+  sol.position.set(
+    CAM.dObj.x + Math.sin(az) * ch * R,
+    Math.max(80, Math.sin(al) * R),
+    CAM.dObj.z - Math.cos(az) * ch * R
+  );
   sol.target.position.copy(CAM.dObj);
-  sol.intensity = 0.14 + d * 2.5;
-  if (d > 0.02) sol.color.copy(C_SOL_BAJO).lerp(C_SOL_DIA, Math.min(1, d * 2.2));
+  sol.intensity = (0.14 + d * 2.5) * (1 - CL.nubes * 0.45);
+  // la hora dorada sale sola: naranja pegado al horizonte, blanco a 14° arriba
+  if (alturaG > -0.9) sol.color.copy(C_SOL_BAJO).lerp(C_SOL_DIA, Math.min(1, alturaG / 14));
   else sol.color.copy(C_LUNA);
 
-  cielo.intensity = 0.55 + d * 0.5;
+  // Cubierto la luz se vuelve plana: menos sol directo y más cielo.
+  cielo.intensity = 0.55 + d * 0.5 + CL.nubes * bruta * 0.5;
   cielo.color.copy(cAux);
-  ambiente.intensity = 0.34 + noche * 0.42;
+  ambiente.intensity = 0.34 + noche * 0.42 + CL.rayo * 1.1;
   relleno.intensity = 0.18 + noche * 0.75;
 
   matEdif.emissiveIntensity = 0.1 + noche * 1.5;
   matAutos.opacity = 0.55 + noche * 0.45;
   agua.material.color.setHex(d > 0.35 ? 0x2a74a8 : 0x1b2a5c);
+  /* Con el sol en su posición real el reflejo especular cae donde tiene que
+     caer, y sobre un espejo de 5000 unidades eso es un fogonazo que se come
+     media pantalla. De día el río se pone más mate —que además es lo que
+     pasa: con sol hay viento y oleaje— y de noche vuelve a ser un espejo. */
+  agua.material.roughness = 0.12 + d * 0.3;
+
+  // Asfalto mojado: más oscuro y con brillo. Es lo que más vende la lluvia,
+  // más que las gotas: una ciudad con lluvia y la calle seca se ve falsa.
+  suelo.material.color.copy(C_SUELO_SECO).lerp(C_SUELO_MOJADO, CL.mojado);
+  suelo.material.roughness = 0.92 - CL.mojado * 0.45;
 
   for (const L of LOCALES) {
     if (!L.mundo) continue;
@@ -2537,7 +3107,7 @@ addEventListener('resize', medir);
 medir();
 
 const reloj = new THREE.Clock();
-let tHUD = 0, tEtiq = 0, tReloj = 0;
+let tHUD = 0, tEtiq = 0, tReloj = 0, tSol = 0;
 
 function loop() {
   const dt = Math.min(reloj.getDelta(), 0.05);
@@ -2546,6 +3116,12 @@ function loop() {
   // formatear con zona horaria 60 veces por segundo no aporta nada.
   tReloj += dt;
   if (tReloj > 1) { tReloj = 0; S.hora = horaDeLaZona(); }
+
+  // El sol se mueve un cuarto de grado por minuto: recalcularlo cada 15 s es
+  // de sobra, y cuesta una decena de senos.
+  tSol += dt;
+  if (tSol > 15) { tSol = 0; refrescarSol(); }
+  animarClima(dt);
 
   // cámara: si nadie toca nada por un rato, la vista gira sola
   if (tvOn) {
@@ -2590,7 +3166,6 @@ function loop() {
     const p = quieto ? 0 : Math.sin(L.pulso * Math.PI);
     L.cuerpo.scale.y = 1 + p * 0.14;
     L.cuerpo.scale.x = L.cuerpo.scale.z = 1 - p * 0.06;
-    L.cuerpo.position.y = L.alto / 2 * L.cuerpo.scale.y;
 
     // piso de 12: arrancando el mes todos van por el 2 % y sin piso la ciudad
     // queda sin haces, que es justo lo que se mira de lejos
@@ -2685,6 +3260,8 @@ function alSincronizar(e) {
   }
 
   pintarHUD();
+  refrescarSol();
+  pintarClima();
   cicloDiario();
   if (otroDia && S.sel) pintarDetalle();
 }
@@ -2738,6 +3315,10 @@ async function entrar() {
     alSincronizar(await api('/api/estado'));
     marcarConexion(true);
     conectar();
+    // El clima va aparte del stream: cambia cada quince minutos y no tiene por
+    // qué viajar con cada ticket.
+    pedirClima();
+    setInterval(pedirClima, CLIMA_CADA);
   } catch (err) {
     if (err.status === 401) return mostrarPuerta('');
     console.error('No se pudo entrar:', err);

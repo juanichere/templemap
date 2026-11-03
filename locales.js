@@ -50,6 +50,19 @@ const BASE = [
   { id: 'chino',     nombre: 'Barrio Chino',        dir: 'Echeverría 1664',            barrio: 'Belgrano',
     lat: -34.558753, lng: -58.448631, pico: 24, ticket: 24000, perfil: 'barrio',      en_mapa: 1 },
 
+  // La fábrica. `tipo: 'fabrica'` es lo único que la distingue en los datos:
+  // el mundo 3D le dibuja tanques y chimenea en lugar de un local, y la lista
+  // le pone su marca. Factura como cualquiera —tiene barra— así que entra en
+  // el ranking y en el objetivo.
+  //
+  // ⚠️ La dirección es la mejor que pude confirmar y NO me la pasó nadie de la
+  // empresa: Av. Gral. Las Heras 1822 es el domicilio registrado de TEMPLE
+  // BREWERY S.A. y OpenStreetMap tiene ahí un "The Temple Bar". Si el Lab está
+  // en otra parte, se corrige `dir`, `lat` y `lng` acá y listo.
+  { id: 'lab',       nombre: 'Temple Lab',          dir: 'Av. Gral. Las Heras 1822',   barrio: 'Recoleta',
+    lat: -34.591706, lng: -58.392198, pico: 20, ticket: 27000, perfil: 'noche',       en_mapa: 1,
+    tipo: 'fabrica', dir_a_confirmar: 1 },
+
   // --- Resto del país (no van en el mapa de CABA, sí en el del país) -------
   { id: 'maschwitz', nombre: 'Maschwitz',           dir: 'Mendoza 1731, Ing. Maschwitz', barrio: 'Buenos Aires',
     lat: -34.382541, lng: -58.748123, pico: 26, ticket: 26000, perfil: 'noche',     en_mapa: 0 },
@@ -79,6 +92,8 @@ const LOCALES = BASE.map(L => {
     ...L,
     pos_id: '',                       // ← completar cuando llegue el webhook
     objetivo_diario: Math.round(suma * L.pico * L.ticket * 0.9 / 1000) * 1000,
+    tipo: L.tipo || 'bar',            // 'bar' | 'fabrica'
+    dir_a_confirmar: L.dir_a_confirmar || 0,
     activo: 1,
   };
 });

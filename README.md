@@ -7,9 +7,11 @@ Proceso único Node/Express + SQLite, como Aperturas. Sin build step.
 
 ```bash
 npm install
-npm run dev          # nodemon
-npm start            # producción
-npm run probar       # smoke test del circuito entero contra un server corriendo
+npm run dev               # nodemon
+npm start                 # producción
+npm run probar            # smoke test del circuito de ventas
+npm run probar:objetivos  # el ida y vuelta de la planilla de objetivos
+npm run probar:clima      # el sol contra efemérides conocidas, y el clima
 ```
 
 Node ≥ 20.
@@ -56,6 +58,10 @@ Para verificar: `GET /salud` tiene que devolver `"hook": "firma"`. Si dice
 El `SIMULADOR` queda en `0`: en producción está bloqueado salvo que se habilite
 a mano con `SIMULADOR_EN_PROD=1`, justamente para que no entre facturación
 inventada al tablero real.
+
+El clima no necesita ninguna variable para andar. `CLIMA_API_KEY` sólo hace
+falta con la licencia comercial de Open-Meteo, y `CLIMA_OFF=1` lo apaga.
+`GET /salud` dice en qué modo está.
 
 ---
 
@@ -168,6 +174,8 @@ alta es idempotente, se puede reintentar el backfill las veces que haga falta.
   después un `venta` por cada ticket. Latido cada 20 s.
 - `GET /api/ventas?desde&hasta&local&limite` — histórico.
 - `GET /api/locales/:id/dias?mes=YYYY-MM` — facturación por día, para el gráfico.
+- `GET /api/clima` — el clima de cada local. Siempre 200: si la API de afuera
+  no contesta devuelve `ok: false` con el motivo y el tablero sigue andando.
 - `PUT /api/locales/:id/objetivo` `{ diario }`
 - `PUT /api/locales/:id/objetivo-mensual` `{ periodo, monto }`
 - `PUT /api/locales/:id/pos-id` `{ pos_id }`
@@ -277,6 +285,107 @@ corriendo, incluida la aritmética del reparto.
 
 Los dos le pegan a los mismos dos endpoints: `/api/estado` para el snapshot y
 `/api/stream` para lo que va pasando.
+
+### El sol se calcula, el clima se pregunta
+
+Son dos cosas distintas y por eso se resuelven distinto.
+
+**La posición del sol es astronomía** (`public/sol.mjs`): da el mismo número
+siempre y no depende de que nadie esté arriba. Antes el ciclo día/noche corría
+con una ventana fija de 6:40 a 20:00, y eso es falso casi todo el año: en Buenos
+Aires el sol se pone a las 17:50 en junio y a las 20:06 en diciembre, y al
+mediodía llega a 32° en invierno contra 79° en verano. Ahora el ciclo sale de la
+**altura real del sol** para la fecha y las coordenadas, y el sol del mundo 3D
+se para en su **azimut real** — así que al mediodía está al norte y las sombras
+caen al sur, como corresponde al hemisferio en el que estamos.
+
+Debajo del horizonte no se corta en seco: el crepúsculo civil llega hasta −6° y
+se apaga del todo cerca de −12°. Es la media hora en la que la ciudad se prende
+y el cielo queda violeta. La luz de la hora dorada sale sola: el sol es naranja
+pegado al horizonte y blanco a 14° arriba.
+
+Amanecer y atardecer se buscan **numéricamente** y no con la fórmula cerrada del
+ángulo horario: cuesta unas 150 evaluaciones de trigonometría una vez por día y
+a cambio no hay que acertarle a los signos ni a las normalizaciones. De yapa, el
+día polar sale solo — si el sol nunca cruza el horizonte no hay cruce que
+devolver. No es teórico: la cadena llega a Río Gallegos, donde el día de
+invierno dura 7 h 48 contra las 9 h 48 de Buenos Aires.
+
+**El clima no se puede calcular**, así que se pide afuera: Open-Meteo, por
+`clima.js`. Tres decisiones:
+
+- **Lo pide el servidor, no el navegador.** Un tablero en modo TV abierto todo
+  el día haría cientos de pedidos a un tercero; así la respuesta se comparte
+  entre todos los tableros conectados y la clave, cuando haya, no viaja al
+  cliente. Caché de 10 minutos, que es cada cuánto actualiza la API.
+- **Los locales se agrupan por celda del modelo** (0.1°, unos 11 km). Los diez
+  de CABA están dentro de diez kilómetros: pedir diez puntos devolvería diez
+  veces el mismo número. Dieciocho locales entran en nueve puntos, y van todos
+  en una sola request.
+- **Si falla, devuelve lo último que funcionó marcado como viejo.** Un dato de
+  quince minutos atrás sirve; un hueco en la pantalla, no. Y si nunca funcionó,
+  el mundo se dibuja despejado. El clima es un adorno, no una dependencia:
+  `/api/clima` nunca contesta otra cosa que un 200.
+
+⚠️ **La API libre de Open-Meteo es para uso no comercial.** Si esto pasa a ser
+una herramienta de la empresa corresponde la licencia paga, y es sólo setear
+`CLIMA_API_KEY`: con clave el módulo va solo al host de clientes. `CLIMA_OFF=1`
+lo apaga del todo.
+
+Lo que el clima le hace al mundo: el cielo se va al gris y el sol pega menos
+según el porcentaje de nubes, la niebla sube la densidad de la bruma, la lluvia
+cae en rayitas inclinadas con el viento, la nieve en puntos que se mecen, y la
+tormenta agrega relámpagos con el trueno 850 ms después, porque el sonido tarda.
+
+⚠️ **Lo que más vende la lluvia no son las gotas: es el asfalto.** Una ciudad
+con lluvia y la calle seca se ve falsa, así que el suelo se oscurece y baja su
+rugosidad. Y las nubes van a opacidad 0.2 a propósito: una capa opaca encima de
+la ciudad taparía justo los locales, que es lo que se mira.
+
+⚠️ Las gotas son **rayitas y no puntos**. Una gota de lluvia vista de lejos es
+una raya; con puntos parece nieve.
+
+⚠️ Con el sol en su posición real, el reflejo especular sobre el río cae donde
+tiene que caer — y sobre un espejo de 5000 unidades eso es un fogonazo que se
+come media pantalla. De día el agua se pone más mate (que además es lo que pasa:
+con sol hay viento y oleaje) y de noche vuelve a ser un espejo.
+
+El chip de la barra se muestra **siempre**, aunque no haya clima: el amanecer y
+el atardecer se saben igual. Lo que falta en ese caso es la temperatura, no el
+chip. Y "Resto del país" trae la temperatura de cada ciudad, que con la cadena
+estirada 4000 km de norte a sur es un dato real: hoy iban 21° en Santiago del
+Estero contra 5° en Bariloche.
+
+### Temple Lab, la fábrica
+
+`locales.tipo` vale `bar` o `fabrica`, y es lo único que distingue al Lab en los
+datos. Con eso el mundo le dibuja **nave, tres tanques de acero y chimenea con
+humo** en lugar de un local, y la lista y la ficha le ponen su chapa. Factura
+como cualquier otro —tiene barra— así que entra en el ranking y en el objetivo.
+
+⚠️ **La dirección del Lab es la mejor que se pudo confirmar, no un dato que haya
+pasado nadie de la empresa.** Av. Gral. Las Heras 1822 es el domicilio
+registrado de TEMPLE BREWERY S.A. y OpenStreetMap tiene ahí un "The Temple Bar";
+no figura como "Temple Lab" en el sitio oficial. Queda marcada con
+`dir_a_confirmar`, y la ficha lo dice en pantalla en vez de hacerla pasar por
+cierta. Para corregirla se tocan `dir`, `lat` y `lng` en `locales.js`.
+
+### A escala, Palermo es Palermo
+
+Casa Temple y Soho están en la misma esquina —Costa Rica 4677 y 4699, veinte
+metros— y a 26 unidades de mundo por kilómetro quedarían uno encima del otro.
+Se separan, pero **sólo el ancho de una vereda**: 19 unidades, unos 730 metros.
+
+Antes eran 52 —dos kilómetros— y eso mentía fuerte: los mandaba a barrios
+distintos y de paso empujaba a Hollywood y a Recoleta, que estaban bien donde
+estaban. Mejor dos edificios pegados en la misma esquina, que es lo que son,
+aunque se les solape la vereda.
+
+⚠️ Las placas de nombre tienen **tamaño fijo en pantalla**, así que a escala
+real se tapan entre ellas. Cada local cuelga la suya a distinta altura, y la
+altura sale de **mirar a los vecinos**: el escalón más bajo que no esté usado
+por otro local a menos de 90 unidades. Antes era el índice del array módulo 4,
+que alcanzaba cuando se separaban dos kilómetros; a escala real, no.
 
 ### Dos mundos: ciudad y país
 

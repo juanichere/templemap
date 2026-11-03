@@ -11,6 +11,7 @@ const {
   sumaFactores, objetivoMensual, objetivoDelDia,
 } = require('./locales');
 const { adaptar, ADAPTADORES } = require('./adaptadores');
+const { climaDe } = require('./clima');
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || __dirname;
@@ -53,6 +54,8 @@ CREATE TABLE IF NOT EXISTS locales (
   ticket_prom INTEGER DEFAULT 0,
   pico INTEGER DEFAULT 0,                -- sólo lo usa el simulador
   perfil TEXT DEFAULT 'noche',           -- sólo lo usa el simulador
+  tipo TEXT DEFAULT 'bar',               -- 'bar' | 'fabrica' (la cervecería)
+  dir_a_confirmar INTEGER DEFAULT 0,     -- la dirección es la mejor conjetura
   activo INTEGER DEFAULT 1
 );
 
@@ -100,6 +103,13 @@ CREATE TABLE IF NOT EXISTS ajustes (
   if (!cols.includes('hora_local')) {
     db.exec('ALTER TABLE ventas ADD COLUMN hora_local INTEGER');
   }
+  // La base de producción ya existe, así que CREATE TABLE IF NOT EXISTS no le
+  // agrega una columna: hay que pedirla.
+  const cl = db.prepare('PRAGMA table_info(locales)').all().map(c => c.name);
+  if (!cl.includes('tipo')) db.exec("ALTER TABLE locales ADD COLUMN tipo TEXT DEFAULT 'bar'");
+  if (!cl.includes('dir_a_confirmar')) {
+    db.exec('ALTER TABLE locales ADD COLUMN dir_a_confirmar INTEGER DEFAULT 0');
+  }
 }
 
 // Alta de locales: sólo agrega los que faltan. Si alguien editó un objetivo o
@@ -108,9 +118,11 @@ CREATE TABLE IF NOT EXISTS ajustes (
   const existe = db.prepare('SELECT 1 FROM locales WHERE id = ?');
   const insertar = db.prepare(`
     INSERT INTO locales (id, nombre, dir, barrio, lat, lng, en_mapa, pos_id,
-                         objetivo_diario, ticket_prom, pico, perfil, activo)
+                         objetivo_diario, ticket_prom, pico, perfil, tipo,
+                         dir_a_confirmar, activo)
     VALUES (@id, @nombre, @dir, @barrio, @lat, @lng, @en_mapa, @pos_id,
-            @objetivo_diario, @ticket, @pico, @perfil, @activo)`);
+            @objetivo_diario, @ticket, @pico, @perfil, @tipo,
+            @dir_a_confirmar, @activo)`);
   const tx = db.transaction(ls => { for (const L of ls) if (!existe.get(L.id)) insertar.run(L); });
   tx(LOCALES);
 }
@@ -334,6 +346,8 @@ function estado() {
     lat: L.lat,
     lng: L.lng,
     en_mapa: !!L.en_mapa,
+    tipo: L.tipo || 'bar',
+    dir_a_confirmar: !!L.dir_a_confirmar,
     objetivo_diario: diario,
     objetivo_cargado: cargado != null,
     objetivo_mensual: mensual,
@@ -903,6 +917,18 @@ app.delete('/api/simulador/datos', requiereEscritura, (req, res) => {
   res.json({ borradas: r.changes });
 });
 
+// --- Clima -----------------------------------------------------------------
+// Lo pide el servidor y no cada tablero: ver clima.js. El tablero lo consulta
+// cada diez minutos y nunca lo necesita para dibujarse, así que un error acá
+// no puede devolver otra cosa que un 200 con ok:false.
+app.get('/api/clima', requiereLectura, async (req, res) => {
+  try {
+    res.json(await climaDe(LOC.filter(L => L.activo), TZ));
+  } catch (err) {
+    res.json({ ok: false, error: String(err.message || err), locales: {} });
+  }
+});
+
 // --- Salud y estáticos -----------------------------------------------------
 app.get('/salud', (req, res) => {
   const fila = db.prepare('SELECT COUNT(*) AS n FROM ventas').get();
@@ -913,6 +939,8 @@ app.get('/salud', (req, res) => {
     simulador: SIM.on,
     adaptador: POS_ADAPTADOR,
     hook: HOOK_SECRET ? 'firma' : HOOK_TOKEN ? 'token' : 'sin configurar',
+    clima: process.env.CLIMA_OFF === '1' ? 'apagado'
+      : process.env.CLIMA_API_KEY ? 'open-meteo con clave' : 'open-meteo libre',
     dia_comercial: hoyComercial(),
   });
 });

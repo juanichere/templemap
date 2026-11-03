@@ -21,7 +21,9 @@ const bytes = new Uint8Array(await (await fetch(B + '/api/objetivos.csv?anio=202
 const csv = new TextDecoder('utf-8').decode(bytes);
 const lineas = csv.replace(/^﻿/, '').trim().split('\r\n');
 m(lineas[0].startsWith('Local;2026-01;'), 'la plantilla sale con los 12 meses', lineas[0].slice(0, 32));
-m(lineas.length === 18, 'una fila por local', `${lineas.length - 1} filas`);
+const cuantos = (await (await fetch(B + '/api/estado', { headers: H })).json()).locales.length;
+m(lineas.length === cuantos + 1, 'una fila por local',
+  `${lineas.length - 1} filas para ${cuantos} locales`);
 m(bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF, 'lleva BOM para que Excel respete los acentos');
 
 // 2 · una planilla llena a mano, con las mañas del equipo
