@@ -127,6 +127,42 @@ CREATE TABLE IF NOT EXISTS ajustes (
   tx(LOCALES);
 }
 
+/* Correcciones puntuales a datos ya sembrados.
+
+   El alta de arriba sólo agrega los que faltan, a propósito: así un objetivo o
+   un pos_id cargado a mano no se pierde en el próximo deploy. Pero eso también
+   significa que un dato MAL sembrado se queda mal para siempre en una base que
+   ya existe — y las coordenadas de los locales salieron de geocodificar
+   direcciones, así que alguna más va a estar corrida.
+
+   Cada corrección se aplica UNA vez y se marca. Si después alguien la edita a
+   mano, el próximo deploy no se la pisa. */
+const CORRECCIONES = [
+  // El Lab estaba sembrado en Av. Las Heras 1822, que era la mejor conjetura
+  // que había antes de que la empresa pasara la dirección de verdad.
+  { clave: 'lab_gorriti', id: 'lab', campos: {
+    dir: 'Gorriti 4346', barrio: 'Palermo',
+    lat: -34.593929, lng: -58.424871, dir_a_confirmar: 0,
+  } },
+];
+
+{
+  const hecha = db.prepare('SELECT 1 FROM ajustes WHERE clave = ?');
+  const marcar = db.prepare(
+    "INSERT OR REPLACE INTO ajustes (clave, valor) VALUES (?, datetime('now'))");
+  const tx = db.transaction(() => {
+    for (const c of CORRECCIONES) {
+      const clave = `correccion_${c.clave}`;
+      if (hecha.get(clave)) continue;
+      const cols = Object.keys(c.campos);
+      db.prepare(`UPDATE locales SET ${cols.map(k => `${k} = @${k}`).join(', ')} WHERE id = @id`)
+        .run({ ...c.campos, id: c.id });
+      marcar.run(clave);
+    }
+  });
+  tx();
+}
+
 // ---------------------------------------------------------------------------
 // Fechas
 //

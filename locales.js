@@ -55,13 +55,11 @@ const BASE = [
   // le pone su marca. Factura como cualquiera —tiene barra— así que entra en
   // el ranking y en el objetivo.
   //
-  // ⚠️ La dirección es la mejor que pude confirmar y NO me la pasó nadie de la
-  // empresa: Av. Gral. Las Heras 1822 es el domicilio registrado de TEMPLE
-  // BREWERY S.A. y OpenStreetMap tiene ahí un "The Temple Bar". Si el Lab está
-  // en otra parte, se corrige `dir`, `lat` y `lng` acá y listo.
-  { id: 'lab',       nombre: 'Temple Lab',          dir: 'Av. Gral. Las Heras 1822',   barrio: 'Recoleta',
-    lat: -34.591706, lng: -58.392198, pico: 20, ticket: 27000, perfil: 'noche',       en_mapa: 1,
-    tipo: 'fabrica', dir_a_confirmar: 1 },
+  // La dirección la dio el usuario. Queda en Palermo, a seis cuadras de Casa
+  // Temple y Soho: los cuatro de la zona entran en el mismo racimo del mapa.
+  { id: 'lab',       nombre: 'Temple Lab',          dir: 'Gorriti 4346',               barrio: 'Palermo',
+    lat: -34.593929, lng: -58.424871, pico: 20, ticket: 27000, perfil: 'noche',       en_mapa: 1,
+    tipo: 'fabrica' },
 
   // --- Resto del país (no van en el mapa de CABA, sí en el del país) -------
   { id: 'maschwitz', nombre: 'Maschwitz',           dir: 'Mendoza 1731, Ing. Maschwitz', barrio: 'Buenos Aires',

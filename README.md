@@ -190,6 +190,16 @@ en las escrituras, no hay superficie de CSRF.
 
 ## Decisiones que conviene conocer antes de tocar esto
 
+**El alta de locales sólo agrega, y las correcciones van aparte.** El seed no
+pisa un local que ya existe: si alguien cargó un objetivo o un `pos_id` a mano,
+el próximo deploy no se lo lleva puesto. El precio es que un dato **mal**
+sembrado se queda mal para siempre en una base que ya existe — y las
+coordenadas salieron de geocodificar direcciones, así que va a volver a pasar.
+Para eso está `CORRECCIONES` en `server.js`: cada una se aplica **una vez** y se
+marca en `ajustes`, así que si después alguien edita ese campo a mano, el deploy
+siguiente lo respeta. Así se movió Temple Lab de Las Heras a Gorriti sin tocar
+la base a mano ni perder nada.
+
 **El día comercial cierra a las 6 de la mañana.** Una venta de las 3 AM del
 sábado es del viernes. Un bar que factura hasta las 4 no puede tener el pico
 partido en dos días. El día se calcula al recibir la venta y se **guarda** en la
@@ -363,12 +373,14 @@ datos. Con eso el mundo le dibuja **nave, tres tanques de acero y chimenea con
 humo** en lugar de un local, y la lista y la ficha le ponen su chapa. Factura
 como cualquier otro —tiene barra— así que entra en el ranking y en el objetivo.
 
-⚠️ **La dirección del Lab es la mejor que se pudo confirmar, no un dato que haya
-pasado nadie de la empresa.** Av. Gral. Las Heras 1822 es el domicilio
-registrado de TEMPLE BREWERY S.A. y OpenStreetMap tiene ahí un "The Temple Bar";
-no figura como "Temple Lab" en el sitio oficial. Queda marcada con
-`dir_a_confirmar`, y la ficha lo dice en pantalla en vez de hacerla pasar por
-cierta. Para corregirla se tocan `dir`, `lat` y `lng` en `locales.js`.
+Está en **Gorriti 4346, Palermo**, a seis cuadras de Casa Temple y Soho: los
+cuatro de la zona entran en el mismo racimo del mapa, y por eso importa lo del
+escalonado de las placas que está acá abajo.
+
+La columna `dir_a_confirmar` sigue existiendo y pinta un "dirección a confirmar"
+en la ficha. Las coordenadas de los demás locales salieron de geocodificar
+direcciones del sitio oficial, así que el día que alguna aparezca corrida hay
+dónde marcarlo mientras se averigua.
 
 ### A escala, Palermo es Palermo
 
