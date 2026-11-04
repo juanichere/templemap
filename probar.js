@@ -94,11 +94,16 @@ const venta = (extra = {}) => ({
     'un lote mezclado guarda las buenas y reporta la mala', JSON.stringify(j));
 
   // --- día comercial -------------------------------------------------------
-  // Las 3 de la mañana de hoy pertenecen al día de AYER: el día de un bar
-  // cierra a las 6, no a medianoche.
-  const hoy = new Date();
-  const madrugada = new Date(Date.UTC(
-    hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate(), 6, 0, 0)); // 03:00 en Buenos Aires
+  // Las 3 de la mañana de un día pertenecen al día comercial ANTERIOR: el día
+  // de un bar cierra a las 6, no a medianoche.
+  //
+  // La fecha sale del día comercial que informa el server y NO de la fecha UTC
+  // de esta máquina. Construirla con Date.UTC() hacía que la prueba fallara
+  // después de las 21 de Argentina, cuando en UTC ya es el día siguiente: la
+  // "madrugada" se iba a mañana y caía en el mismo día comercial que el resto.
+  // Argentina está fija en UTC−3 todo el año, así que el offset va escrito.
+  const { dia_comercial: diaHoy } = await (await fetch(`${BASE}/salud`)).json();
+  const madrugada = new Date(`${diaHoy}T03:00:00-03:00`);
   r = await hook(venta({ ts: madrugada.toISOString(), externo_id: `TEST-MADRUGADA-${Date.now()}` }));
   marca(r.status === 200, 'entra una venta de la madrugada');
 
