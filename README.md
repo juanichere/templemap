@@ -435,6 +435,31 @@ que el detalle, porque a la distancia de la vista panorámica un hito mide
 treinta píxeles. De ahí que la Bombonera sea azul con una franja amarilla y el
 Monumental un óvalo blanco con la banda roja.
 
+⚠️ **La referencia de tamaño es un local, no la ciudad.** La primera versión
+salió con una Bombonera de 42 unidades —1,6 km a la escala del mundo— y los
+hitos se comían el mapa en vez de ubicarlo. Ahora ninguno pasa mucho de los 25,
+contra los 15 que mide un local. Al achicarlos hay que mover tres cosas juntas:
+el tamaño de la forma, el `radio` con el que se defiende del relleno, y la
+altura a la que cuelga su nombre en `altoDe()`.
+
+Proporciones que no se pueden aflojar, porque son lo que hace reconocible a
+cada uno:
+
+- **El Obelisco es flaco.** El de verdad es uno a diez, alto contra lado. La
+  primera versión salió uno a cuatro y era un monolito: la esbeltez es lo que
+  lo hace el Obelisco.
+- **La franja amarilla de la Bombonera es un filete en el borde de afuera.**
+  Pintada a todo lo ancho del escalón, desde arriba la cancha se veía amarilla
+  con un zócalo azul, que es al revés de lo que es.
+- **El anillo del Monumental va más ancho arriba que abajo.** Una tribuna se
+  abre hacia afuera a medida que sube; al revés se lee como un tacho.
+- **Del techo del paifang, lo que se reconoce es el alero** que vuela por
+  delante de las columnas, no la pendiente. Por eso cada techo lleva su losa
+  saliente abajo y la pirámide, bien chata, arriba.
+- **Las patas del Planetario son aletas**, de sección rectangular: un cilindro
+  se lee como una columna cualquiera. Y el espejo de agua va porque es la mitad
+  de la postal, y porque separa la base del verde del parque.
+
 ⚠️ **Las tribunas de la Bombonera van en 10 y no en 13.** La de verdad es alta y
 encajonada, pero mirada desde los 40° de la cámara una pared de 13 contra un
 hueco de 18 tapa el piso entero: quedaba una caja azul con un agujero negro y no

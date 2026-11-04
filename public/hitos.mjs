@@ -22,12 +22,12 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 export const HITOS = [
-  { id: 'obelisco',  nombre: 'Obelisco',       lat: -34.603709, lng: -58.381630, radio: 26 },
-  { id: 'rosada',    nombre: 'Casa Rosada',    lat: -34.608069, lng: -58.370276, radio: 30 },
-  { id: 'bombonera', nombre: 'La Bombonera',   lat: -34.635517, lng: -58.364916, radio: 38 },
-  { id: 'monumental',nombre: 'Monumental',     lat: -34.545293, lng: -58.449739, radio: 40 },
-  { id: 'arcos',     nombre: 'Arcos del Barrio Chino', lat: -34.557092, lng: -58.450914, radio: 24 },
-  { id: 'planetario',nombre: 'Planetario',     lat: -34.569649, lng: -58.411721, radio: 26 },
+  { id: 'obelisco',  nombre: 'Obelisco',       lat: -34.603709, lng: -58.381630, radio: 17 },
+  { id: 'rosada',    nombre: 'Casa Rosada',    lat: -34.608069, lng: -58.370276, radio: 21 },
+  { id: 'bombonera', nombre: 'La Bombonera',   lat: -34.635517, lng: -58.364916, radio: 25 },
+  { id: 'monumental',nombre: 'Monumental',     lat: -34.545293, lng: -58.449739, radio: 27 },
+  { id: 'arcos',     nombre: 'Arcos del Barrio Chino', lat: -34.557092, lng: -58.450914, radio: 16 },
+  { id: 'planetario',nombre: 'Planetario',     lat: -34.569649, lng: -58.411721, radio: 18 },
 ];
 
 /* ── paleta ──────────────────────────────────────────────────────────────── */
@@ -47,6 +47,8 @@ const C = {
   chinoOro: 0xd8a62a,
   hormigon: 0xcfd4dc,
   hormigonOscuro: 0x6e6a74,
+  espejo: 0x2d5a86,          // el espejo de agua del Planetario
+  ventana: 0x3b4660,
 };
 
 export function construirHitos(THREE, proj, { liviano = false } = {}) {
@@ -87,6 +89,8 @@ export function construirHitos(THREE, proj, { liviano = false } = {}) {
     chinoOro: mat(C.chinoOro, { roughness: 0.4, metalness: 0.55 }),
     hormigon: mat(C.hormigon, { roughness: 0.75 }),
     hormigonOscuro: mat(C.hormigonOscuro),
+    espejo: mat(C.espejo, { roughness: 0.18, metalness: 0.5 }),
+    ventana: mat(C.ventana, { roughness: 0.3, metalness: 0.4 }),
   };
 
   // Caja con su base en y=0 y no en el centro, que es como se piensa un
@@ -98,55 +102,68 @@ export function construirHitos(THREE, proj, { liviano = false } = {}) {
   };
 
   /* ── Obelisco ───────────────────────────────────────────────────────────
-     Un prisma de cuatro caras que afina hacia arriba. Cuatro segmentos
-     radiales en un cilindro dan exactamente eso; el giro de 45° deja las
-     caras enfrentadas a la calle y no las aristas. */
+     El de verdad es flaco: 67 metros de alto por 6,8 de lado, uno a diez. La
+     primera versión salió uno a cuatro y parecía un monolito. La esbeltez es
+     lo que lo hace el Obelisco; sin eso es una piedra parada.
+
+     Un cilindro de cuatro segmentos radiales da el prisma que afina; el giro
+     de 45° deja las caras enfrentadas a la calle y no las aristas. */
   function obelisco() {
     const g = new THREE.Group();
-    g.add(caja(11, 2.2, 11, M.piedra));
+    // el basamento escalonado
+    g.add(caja(7.4, 0.9, 7.4, M.piedra));
+    g.add(caja(5.6, 1.1, 5.6, M.piedra, 0, 0.9, 0));
 
-    const cuerpo = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.5, 4.6, 36, 4), M.piedra);
+    const H = 25;
+    const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 2.2, H, 4), M.piedra);
     cuerpo.rotation.y = Math.PI / 4;
-    cuerpo.position.y = 2.2 + 18;
+    cuerpo.position.y = 2 + H / 2;
     g.add(cuerpo);
 
-    // la punta: la pirámide chiquita que lo remata
-    const punta = new THREE.Mesh(new THREE.ConeGeometry(2.1, 3.4, 4), M.piedra);
+    const punta = new THREE.Mesh(new THREE.ConeGeometry(1.05, 2.1, 4), M.piedra);
     punta.rotation.y = Math.PI / 4;
-    punta.position.y = 2.2 + 36 + 1.4;
+    punta.position.y = 2 + H + 1.05;
     g.add(punta);
     return g;
   }
 
   /* ── Casa Rosada ────────────────────────────────────────────────────────
-     Ancha, baja y rosa. El rosa hace casi todo el trabajo de reconocerla; la
-     silueta aporta el cuerpo central más alto con su arco y las torres de las
-     esquinas. */
+     Ancha, baja y rosa. El rosa hace casi todo; la silueta aporta el cuerpo
+     central más alto —el del balcón— y las cuatro torres de esquina con sus
+     remates. Las torres sin remate quedaban como cajas pegadas. */
   function casaRosada() {
     const g = new THREE.Group();
-    const AN = 30, FO = 19, AL = 11;
+    const AN = 21, FO = 13.5, AL = 7.5;
 
     g.add(caja(AN, AL, FO, M.rosada));
-    // cornisa: un reborde apenas más ancho, que le da sombra propia al frente
-    g.add(caja(AN + 1.6, 1.1, FO + 1.6, M.rosadaOscuro, 0, AL, 0));
-    // cuerpo central, el del balcón
-    g.add(caja(9.5, 15.5, FO + 2.4, M.rosada));
-    g.add(caja(10.8, 1.2, FO + 3.4, M.rosadaOscuro, 0, 15.5, 0));
+    g.add(caja(AN + 1.1, 0.7, FO + 1.1, M.rosadaOscuro, 0, AL, 0));  // cornisa
 
-    // torres de las esquinas
+    // cuerpo central, el del balcón, apenas salido del plano del frente
+    g.add(caja(6.6, 11, FO + 1.6, M.rosada));
+    g.add(caja(7.5, 0.8, FO + 2.4, M.rosadaOscuro, 0, 11, 0));
+    // el arco de entrada: un hueco oscuro, que es lo que se ve de frente
+    g.add(caja(2.6, 4.4, 1.2, M.rosadaOscuro, 0, 0, (FO + 1.6) / 2 - 0.2));
+
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      g.add(caja(5.2, 14, 5.2, M.rosada, sx * (AN / 2 - 2.6), 0, sz * (FO / 2 - 2.6)));
-      g.add(caja(5.9, 1, 5.9, M.rosadaOscuro,
-        sx * (AN / 2 - 2.6), 14, sz * (FO / 2 - 2.6)));
+      const x = sx * (AN / 2 - 1.9), z = sz * (FO / 2 - 1.9);
+      g.add(caja(3.6, 9.4, 3.6, M.rosada, x, 0, z));
+      g.add(caja(4.1, 0.6, 4.1, M.rosadaOscuro, x, 9.4, z));
+      // el remate: sin esto las torres son cajas pegadas al techo
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(2.6, 2.1, 4), M.rosadaOscuro);
+      cap.rotation.y = Math.PI / 4;
+      cap.position.set(x, 10 + 1.05, z);
+      g.add(cap);
     }
     return g;
   }
 
   /* ── canchas ────────────────────────────────────────────────────────────
-     Las dos son el mismo problema: desde arriba una cancha es un anillo de
-     tribunas con un rectángulo verde adentro. Lo que las distingue es la
-     forma del anillo y el color. */
+     Desde arriba una cancha es un anillo de tribunas con un rectángulo verde
+     adentro. Lo que las distingue es la forma del anillo y el color.
+
+     Las dos van en dos niveles —una bandeja baja adentro y una alta afuera—
+     en vez de una pared vertical sola. Con un solo nivel parecían una pileta:
+     lo que dice "tribuna" es el escalón. */
   function cesped(an, fo, y = 0.2) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(an, 0.8, fo), M.cesped);
     m.position.y = y + 0.4;
@@ -158,127 +175,150 @@ export function construirHitos(THREE, proj, { liviano = false } = {}) {
      cajas y no con un cilindro. */
   function bombonera() {
     const g = new THREE.Group();
-    const AN = 42, FO = 35, GRUESO = 5.5;
-    /* ⚠️ Las tribunas van en 10 y no en 13.
+    const AN = 25, FO = 21;
+    const ALTO = 7.4, BAJA = 4.2;     // bandeja alta y bandeja baja
+    const GR = 3.4, GR_B = 1.9;
 
-       La Bombonera de verdad es alta y encajonada —de ahí el apodo—, pero
-       mirada desde los 40° de la cámara del tablero, una pared de 13 contra un
-       hueco de 18 tapa el piso entero: quedaba una caja azul con un agujero
-       negro, no una cancha. Bajas a 10 y con el hueco un poco más grande se ve
-       el verde, que es lo que la hace reconocible de una.
+    g.add(cesped(AN - 11, FO - 9.5, 1));
 
-       El paredón sí queda alto: es la seña de la cancha y va de un solo lado,
-       así que no tapa nada cuando la cámara gira. */
-    const ALTO = 10;
+    // anillo de tres lados, en dos escalones
+    const lado = (w, h, d, x, z, mat) => g.add(caja(w, h, d, mat, x, 0, z));
+    const zAtras = -(FO / 2 - GR / 2), xLado = AN / 2 - GR / 2;
+    const fondo = FO - GR * 2;
 
-    g.add(cesped(AN - 13, FO - 11, 1.4));
-    // las tres tribunas
-    g.add(caja(AN, ALTO, GRUESO, M.bocaAzul, 0, 0, -(FO / 2 - GRUESO / 2)));
-    g.add(caja(GRUESO, ALTO, FO - GRUESO * 2, M.bocaAzul, -(AN / 2 - GRUESO / 2), 0, 0));
-    g.add(caja(GRUESO, ALTO, FO - GRUESO * 2, M.bocaAzul, AN / 2 - GRUESO / 2, 0, 0));
-    // el paredón: más alto, más fino y plano
-    g.add(caja(AN, ALTO + 5.5, 3.6, M.bocaAzul, 0, 0, FO / 2 - 1.8));
+    lado(AN, ALTO, GR, 0, zAtras, M.bocaAzul);
+    lado(GR, ALTO, fondo, -xLado, 0, M.bocaAzul);
+    lado(GR, ALTO, fondo, xLado, 0, M.bocaAzul);
+    // la baja, metida para adentro
+    lado(AN - GR * 2, BAJA, GR_B, 0, zAtras + GR / 2 + GR_B / 2, M.bocaAzul);
+    lado(GR_B, BAJA, fondo - GR_B * 2, -(xLado - GR / 2 - GR_B / 2), 0, M.bocaAzul);
+    lado(GR_B, BAJA, fondo - GR_B * 2, xLado - GR / 2 - GR_B / 2, 0, M.bocaAzul);
 
-    // la franja amarilla, arriba de todo el anillo
-    const F = GRUESO + 0.5;
-    g.add(caja(AN + 0.5, 1.8, F, M.bocaAmarillo, 0, ALTO - 2, -(FO / 2 - GRUESO / 2)));
-    g.add(caja(F, 1.8, FO - GRUESO * 2, M.bocaAmarillo, -(AN / 2 - GRUESO / 2), ALTO - 2, 0));
-    g.add(caja(F, 1.8, FO - GRUESO * 2, M.bocaAmarillo, AN / 2 - GRUESO / 2, ALTO - 2, 0));
-    g.add(caja(AN + 0.5, 1.8, 4.1, M.bocaAmarillo, 0, ALTO + 1.7, FO / 2 - 1.8));
+    // el paredón: más alto, más fino y plano. Es la seña de la cancha.
+    g.add(caja(AN, ALTO + 4.4, 2.4, M.bocaAzul, 0, 0, FO / 2 - 1.2));
+
+    /* La franja amarilla va como un filete en el BORDE DE AFUERA y no tapando
+       la tribuna entera: pintada a todo lo ancho del escalón, desde arriba la
+       cancha se veía amarilla con un zócalo azul, que es al revés de lo que
+       es. Boca es azul con una franja. */
+    const F = 1.2, ANCHO_F = 1.1;
+    const borde = (w, d, x, z) => g.add(caja(w, F, d, M.bocaAmarillo, x, ALTO - F, z));
+    borde(AN + 0.3, ANCHO_F, 0, -(FO / 2 - ANCHO_F / 2));
+    borde(ANCHO_F, fondo + GR, -(AN / 2 - ANCHO_F / 2), 0);
+    borde(ANCHO_F, fondo + GR, AN / 2 - ANCHO_F / 2, 0);
+    g.add(caja(AN + 0.3, F, 2.7, M.bocaAmarillo, 0, ALTO + 3.2, FO / 2 - 1.2));
     return g;
   }
 
-  /* El Monumental sí es un óvalo cerrado, y más grande. Un cilindro abierto
-     de los dos lados es el anillo de tribunas; escalado en un eje, el óvalo. */
+  /* El Monumental sí es un óvalo cerrado, y más grande.
+
+     ⚠️ El anillo va más ancho ARRIBA que abajo. Una tribuna se abre hacia
+     afuera a medida que sube; al revés —que es como salió la primera vez— se
+     lee como un tacho, no como un estadio. */
   function monumental() {
     const g = new THREE.Group();
-    const R = 21, ALTO = 14;
+    const R = 15, ALTO = 9.4, ACHATE = 0.84;
 
-    const anillo = new THREE.Mesh(
-      new THREE.CylinderGeometry(R, R + 2.5, ALTO, 30, 1, true), M.riverBlanco);
-    anillo.material.side = THREE.DoubleSide;
-    anillo.position.y = ALTO / 2;
-    anillo.scale.z = 0.86;
-    g.add(anillo);
+    const anillo = (rAbajo, rArriba, alto, y, mat) => {
+      const m = new THREE.Mesh(
+        new THREE.CylinderGeometry(rArriba, rAbajo, alto, 34, 1, true), mat);
+      m.material.side = THREE.DoubleSide;
+      m.position.y = y + alto / 2;
+      m.scale.z = ACHATE;
+      g.add(m);
+      return m;
+    };
 
-    // la banda roja arriba, que es lo que lo hace River de un vistazo
-    const banda = new THREE.Mesh(
-      new THREE.CylinderGeometry(R + 0.4, R + 0.9, 2.6, 30, 1, true), M.riverRojo);
-    banda.material.side = THREE.DoubleSide;
-    banda.position.y = ALTO - 1.3;
-    banda.scale.z = 0.86;
-    g.add(banda);
+    anillo(R, R + 2.2, ALTO, 0, M.riverBlanco);                    // bandeja alta
+    anillo(R - 3.4, R - 2.2, 4.6, 0, M.riverBlanco);               // bandeja baja
+    anillo(R + 1.9, R + 2.3, 1.7, ALTO - 1.7, M.riverRojo);        // la banda roja
 
-    // el piso de la bandeja, para que no se vea el pasto por abajo del anillo
-    const piso = new THREE.Mesh(new THREE.CircleGeometry(R + 2.5, 30), M.hormigonOscuro);
+    const piso = new THREE.Mesh(new THREE.CircleGeometry(R + 2.2, 34), M.hormigonOscuro);
     piso.rotation.x = -Math.PI / 2;
-    piso.position.y = 0.3;
-    piso.scale.y = 0.86;
+    piso.position.y = 0.25;
+    piso.scale.y = ACHATE;
     g.add(piso);
-    g.add(cesped(24, 17));
+    g.add(cesped(19, 13, 0.3));
     return g;
   }
 
   /* ── Arcos del Barrio Chino ─────────────────────────────────────────────
-     Un paifang: columnas rojas, dintel, y dos techos de tejas encimados con
-     los aleros para arriba. Los dos techos importan — con uno solo parece un
-     cartel de ruta. Van como conos de cuatro caras, que es la simplificación
-     que a esta distancia se lee igual. */
+     Un paifang: columnas rojas, dintel y dos techos de tejas encimados.
+
+     ⚠️ El techo es lo que lo hace chino, y un cono a secas no alcanza: lo que
+     se reconoce es el ALERO que vuela por delante de las columnas. Por eso
+     cada techo lleva su losa saliente abajo y la pirámide, bien chata,
+     arriba. Con un cono solo parecía una carpa. */
   function arcos() {
     const g = new THREE.Group();
-    const LUZ = 17;                       // la separación entre columnas
+    const LUZ = 11.5;
 
     for (const sx of [-1, 1]) {
-      g.add(caja(3.1, 14, 3.1, M.chinoRojo, sx * LUZ / 2, 0, 0));
-      g.add(caja(4.6, 1.1, 4.6, M.chinoOro, sx * LUZ / 2, 0, 0));   // basa
+      const x = sx * LUZ / 2;
+      g.add(caja(2, 9.5, 2, M.chinoRojo, x, 0, 0));
+      g.add(caja(3, 0.8, 3, M.chinoOro, x, 0, 0));        // basa
+      g.add(caja(2.5, 0.5, 2.5, M.chinoOro, x, 9.5, 0));  // capitel
     }
-    g.add(caja(LUZ + 5, 2.8, 3.8, M.chinoRojo, 0, 14, 0));          // dintel
-    g.add(caja(LUZ + 6.4, 1, 4.6, M.chinoOro, 0, 16.8, 0));         // friso
+    g.add(caja(LUZ + 3.4, 1.9, 2.4, M.chinoRojo, 0, 10, 0));    // dintel
+    g.add(caja(LUZ + 4.4, 0.7, 3, M.chinoOro, 0, 11.9, 0));     // friso
 
-    const techo = (ancho, alto, y) => {
-      const t = new THREE.Mesh(new THREE.ConeGeometry(ancho, alto, 4), M.chinoTecho);
+    const techo = (ancho, fondo, y) => {
+      g.add(caja(ancho, 0.55, fondo, M.chinoTecho, 0, y, 0));   // el alero
+      const t = new THREE.Mesh(new THREE.ConeGeometry(ancho * 0.46, 1.8, 4), M.chinoTecho);
       t.rotation.y = Math.PI / 4;
-      t.position.y = y + alto / 2;
-      t.scale.z = 0.4;                    // un paifang es ancho y poco profundo
-      return t;
+      t.position.y = y + 0.55 + 0.9;
+      t.scale.z = fondo / ancho;
+      g.add(t);
     };
-    g.add(techo(14.5, 4.2, 17.8));
-    g.add(techo(9.2, 3.4, 22));
+    techo(LUZ + 7, 4.6, 12.6);
+    techo(LUZ + 1, 3.2, 15.6);
+    // el remate dorado de la cumbrera
+    g.add(caja(0.9, 1.3, 0.9, M.chinoOro, 0, 18.2, 0));
     return g;
   }
 
   /* ── Planetario ─────────────────────────────────────────────────────────
-     La esfera sobre tres patas. Es la silueta más distinta de todas: no hay
-     otra cosa redonda y levantada en toda la ciudad, así que se reconoce
-     incluso cuando mide veinte píxeles. */
+     La esfera sobre tres patas. Es la silueta más distinta de la ciudad: no
+     hay otra cosa redonda y levantada, así que se reconoce aunque mida veinte
+     píxeles.
+
+     El espejo de agua alrededor va porque es la mitad de la postal, y porque
+     a esta escala un disco oscuro concéntrico lo separa del pasto del parque
+     —si no, la base se funde con el verde y la esfera parece flotar. */
   function planetario() {
     const g = new THREE.Group();
 
+    const agua = new THREE.Mesh(new THREE.CircleGeometry(11, 30), M.espejo);
+    agua.rotation.x = -Math.PI / 2;
+    agua.position.y = 0.14;
+    g.add(agua);
+
     const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(13, 14, 1.6, 28), M.hormigonOscuro);
-    base.position.y = 0.8;
+      new THREE.CylinderGeometry(6.4, 7.2, 1.2, 28), M.hormigonOscuro);
+    base.position.y = 0.6;
     g.add(base);
 
+    // Patas de sección rectangular y no cilíndricas: las del Planetario son
+    // aletas de hormigón, y un cilindro se lee como una columna cualquiera.
     for (let k = 0; k < 3; k++) {
       const a = (k / 3) * Math.PI * 2 + Math.PI / 6;
-      const pata = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.1, 1.9, 13, 10), M.hormigon);
-      // inclinada hacia afuera: apoya ancho abajo y junta arriba, como las de verdad
-      pata.position.set(Math.cos(a) * 5.2, 1.6 + 6.5, Math.sin(a) * 5.2);
-      pata.rotation.z = -Math.cos(a) * 0.3;
-      pata.rotation.x = Math.sin(a) * 0.3;
+      const pata = new THREE.Mesh(new THREE.BoxGeometry(1.5, 9, 2.6), M.hormigon);
+      pata.position.set(Math.cos(a) * 3.4, 1.2 + 4.5, Math.sin(a) * 3.4);
+      pata.rotation.y = -a;
+      pata.rotation.z = -Math.cos(a) * 0.26;
+      pata.rotation.x = Math.sin(a) * 0.26;
       g.add(pata);
     }
 
-    const esfera = new THREE.Mesh(new THREE.SphereGeometry(8.4, 22, 16), M.hormigon);
-    esfera.position.y = 1.6 + 13 + 5.6;
+    const yEsfera = 1.2 + 9 + 3.6;
+    const esfera = new THREE.Mesh(new THREE.SphereGeometry(5.8, 26, 18), M.hormigon);
+    esfera.position.y = yEsfera;
     g.add(esfera);
 
-    // el anillo de ventanas, que le marca el ecuador
     const anillo = new THREE.Mesh(
-      new THREE.CylinderGeometry(8.5, 8.5, 1.8, 22, 1, true), M.hormigonOscuro);
+      new THREE.CylinderGeometry(5.9, 5.9, 1.25, 26, 1, true), M.ventana);
     anillo.material.side = THREE.DoubleSide;
-    anillo.position.y = esfera.position.y - 1.2;
+    anillo.position.y = yEsfera - 0.8;
     g.add(anillo);
     return g;
   }
@@ -351,7 +391,7 @@ export function iluminarHitos(materiales, cesped, noche) {
 // A qué altura cuelga el nombre de cada uno: apenas arriba de su punto más
 // alto, que no es el mismo para una cancha que para el Obelisco.
 function altoDe(id) {
-  return { obelisco: 48, rosada: 24, bombonera: 27, monumental: 24, arcos: 31, planetario: 36 }[id] || 26;
+  return { obelisco: 34, rosada: 17, bombonera: 18, monumental: 15, arcos: 22, planetario: 24 }[id] || 20;
 }
 
 /* Qué tan visibles están los nombres. 1 cuando la cámara está encima, 0 en la
