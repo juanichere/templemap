@@ -545,6 +545,7 @@ body{
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
 import { posicionSolar, horasSolares, luzDeAltitud, hhmm as hhmmSol } from './sol.mjs';
+import { construirHitos, opacidadEtiquetas, iluminarHitos } from './hitos.mjs';
 
 /* ════════════════════════════════════════════════════════════════════════════
    1 · GEOGRAFÍA
@@ -1087,6 +1088,9 @@ function zonaDe(pz, dKm) {
 }
 
 let LOC_XZ = [];                      // lo llena construirMundo()
+// Los hitos ocupan lugar: la ciudad de relleno no puede levantar torres
+// adentro de la Bombonera ni encima del Obelisco. Cada uno trae su radio.
+let HITOS_XZ = [];                    // [x, z, radio]
 
 function poblar() {
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
@@ -1123,6 +1127,7 @@ function poblar() {
           return false;
         })) continue;
         if (LOC_XZ.some(([lx, lz]) => Math.hypot(px - lx, pz - lz) < 20)) continue;
+        if (HITOS_XZ.some(([hx, hz, r]) => Math.hypot(px - hx, pz - hz) < r)) continue;
 
         const dKm = Math.hypot(px - MC_X, pz - MC_Z) / ESCALA;
         const Z = zonaDe(pz, dKm);
@@ -1559,8 +1564,21 @@ for (const L of LOCALES) {
 }
 }
 
+const grupoHitos = new THREE.Group();
+escena.add(grupoHitos);
+let ETIQ_HITOS = [], MAT_HITOS = [], CESPED_HITOS = null;
+
 function construirMundo() {
   LOC_XZ = LOCALES.filter(L => L.mapa).map(L => proj(L.lat, L.lng));
+
+  // Antes de poblar, para que el relleno sepa dónde no meterse.
+  const H = construirHitos(THREE, proj, { liviano });
+  grupoHitos.add(H.grupo);
+  ETIQ_HITOS = H.etiquetas;
+  MAT_HITOS = H.materiales;
+  CESPED_HITOS = H.cesped;
+  HITOS_XZ = H.hitos.map(h => [h.wx, h.wz, h.radio]);
+
   poblar();
   construirLocales();
   construirPanel();
@@ -2259,7 +2277,7 @@ function seleccionar(L) {
    Dos mundos a escalas distintas, no un alejar la cámara. Se prende uno y se
    apaga el otro; el panel de datos es el mismo porque los totales de la cadena
    no cambian: lo que cambia es cómo se agrupan. */
-const OBJ_CIUDAD = () => [losa, suelo, ciudad, techos, arboles, autos, gente, grupoLocales];
+const OBJ_CIUDAD = () => [losa, suelo, ciudad, techos, arboles, autos, gente, grupoLocales, grupoHitos];
 
 // Monedas, carteles y gente quedan en coordenadas de la ciudad: si están a
 // mitad de animación cuando se cambia de vista, se ven flotando sobre el mapa
@@ -3153,6 +3171,8 @@ function cicloDiario() {
   suelo.material.color.copy(C_SUELO_SECO).lerp(C_SUELO_MOJADO, CL.mojado);
   suelo.material.roughness = 0.92 - CL.mojado * 0.45;
 
+  iluminarHitos(MAT_HITOS, CESPED_HITOS, noche);
+
   for (const L of LOCALES) {
     if (!L.mundo) continue;
     L.matCartel.emissiveIntensity = 0.5 + noche * 1.4 + L.pulso * 1.6;
@@ -3227,6 +3247,16 @@ function loop() {
   camara.lookAt(CAM.obj);
 
   const noche = cicloDiario();
+
+  // Los nombres de los hitos se desvanecen con la distancia: en la panorámica
+  // estorbarían a las placas de facturación, que son el dato.
+  if (ETIQ_HITOS.length) {
+    const op = S.vista === 'ciudad' && !tvOn ? opacidadEtiquetas(CAM.dist) : 0;
+    for (const sp of ETIQ_HITOS) {
+      sp.visible = op > 0.01;
+      sp.material.opacity = op;
+    }
+  }
 
   // locales
   tEtiq += dt;

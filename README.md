@@ -417,6 +417,44 @@ en la ficha. Las coordenadas de los demás locales salieron de geocodificar
 direcciones del sitio oficial, así que el día que alguna aparezca corrida hay
 dónde marcarlo mientras se averigua.
 
+### Los hitos de la ciudad
+
+`public/hitos.mjs`: el Obelisco, la Casa Rosada, la Bombonera, el Monumental,
+los Arcos del Barrio Chino y el Planetario. **No tienen datos atrás** —no
+facturan, no se clickean, no entran en ningún promedio—. Están para que el mapa
+se lea: un plano de CABA con diez cajas iguales no dice dónde estás parado, y
+con el Obelisco y las dos canchas se ve de una que Puerto Madero está al lado de
+Plaza de Mayo y que Núñez está lejos de todo.
+
+Las coordenadas salen de geocodificar contra OpenStreetMap, igual que las de los
+locales.
+
+⚠️ **Se modelan para reconocerse desde arriba y de lejos**, que es como se mira
+este tablero. Eso manda sobre el parecido: la silueta y el color importan más
+que el detalle, porque a la distancia de la vista panorámica un hito mide
+treinta píxeles. De ahí que la Bombonera sea azul con una franja amarilla y el
+Monumental un óvalo blanco con la banda roja.
+
+⚠️ **Las tribunas de la Bombonera van en 10 y no en 13.** La de verdad es alta y
+encajonada, pero mirada desde los 40° de la cámara una pared de 13 contra un
+hueco de 18 tapa el piso entero: quedaba una caja azul con un agujero negro y no
+una cancha. El paredón sí queda alto —es su seña— y va de un solo lado, así que
+no tapa nada cuando la cámara gira.
+
+⚠️ **Se encienden de noche**, que es cuando el tablero está prendido. Sin eso el
+Obelisco es un palo gris contra una ciudad con todas las ventanas encendidas y
+no se ve. El emisivo es el color propio de cada uno, así que lo que se prende es
+el edificio y no una luz de otro color encima. El césped no: una cancha vacía de
+noche tiene las tribunas encendidas y el campo apagado.
+
+Los nombres **se desvanecen con la distancia** (`opacidadEtiquetas`): en la
+panorámica no se ven, acercándote aparecen. Si estuvieran siempre, seis carteles
+más compitiendo con las diez placas de facturación —que son el dato— dejarían la
+pantalla ilegible.
+
+La ciudad de relleno no construye encima: cada hito trae su `radio` y `poblar()`
+saltea los lotes que caen adentro, igual que hace con los locales y los parques.
+
 ### A escala, Palermo es Palermo
 
 Casa Temple y Soho están en la misma esquina —Costa Rica 4677 y 4699, veinte
