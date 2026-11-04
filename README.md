@@ -12,6 +12,7 @@ npm start                 # producción
 npm run probar            # smoke test del circuito de ventas
 npm run probar:objetivos  # el ida y vuelta de la planilla de objetivos
 npm run probar:clima      # el sol contra efemérides conocidas, y el clima
+npm run probar:demo       # el simulador se cierra solo con la primera venta real
 ```
 
 Node ≥ 20.
@@ -55,9 +56,8 @@ Después, en el dashboard:
 Para verificar: `GET /salud` tiene que devolver `"hook": "firma"`. Si dice
 `"sin configurar"`, falta `HOOK_SECRET` y el webhook va a rechazar todo.
 
-El `SIMULADOR` queda en `0`: en producción está bloqueado salvo que se habilite
-a mano con `SIMULADOR_EN_PROD=1`, justamente para que no entre facturación
-inventada al tablero real.
+El `SIMULADOR` queda en `0`. El botón **Demo** del tablero lo prende cuando
+hace falta, y el permiso ya no es una variable sino un hecho: ver más abajo.
 
 El clima no necesita ninguna variable para andar. `CLIMA_API_KEY` sólo hace
 falta con la licencia comercial de Open-Meteo, y `CLIMA_OFF=1` lo apaga.
@@ -179,7 +179,9 @@ alta es idempotente, se puede reintentar el backfill las veces que haga falta.
 - `PUT /api/locales/:id/objetivo` `{ diario }`
 - `PUT /api/locales/:id/objetivo-mensual` `{ periodo, monto }`
 - `PUT /api/locales/:id/pos-id` `{ pos_id }`
-- `POST /api/simulador` `{ on, velocidad }` · `DELETE /api/simulador/datos`
+- `POST /api/simulador` `{ on, velocidad }` — 403 `BLOQUEADO` con el motivo si
+  ya entraron ventas reales. · `DELETE /api/simulador/datos` — borra **sólo**
+  las de `origen = 'simulador'`.
 
 **Las lecturas aceptan header `x-token` o cookie; las escrituras, sólo header.**
 La cookie hace falta porque `EventSource` no puede mandar headers — el mismo
@@ -295,6 +297,39 @@ corriendo, incluida la aritmética del reparto.
 
 Los dos le pegan a los mismos dos endpoints: `/api/estado` para el snapshot y
 `/api/stream` para lo que va pasando.
+
+### El botón Demo se borra solo
+
+Hasta que el POS esté conectado, el tablero está en cero y así no se puede
+enseñar ni probar. El botón **Demo** de la barra prende el simulador del
+servidor, que inventa tickets siguiendo la curva horaria de cada local.
+
+Antes esto se gobernaba con `SIMULADOR_EN_PROD=1` y en producción quedaba
+cerrado siempre. **El permiso ya no es una variable sino un hecho:**
+
+- Mientras la base no tenga **una sola venta real**, el simulador está
+  disponible y el botón se ve.
+- Apenas entra la primera por el webhook, se apaga **en ese mismo momento**
+  —no en el próximo reinicio— y no se puede volver a prender.
+
+Que es exactamente cuando los datos falsos dejan de ser una demo y pasan a ser
+un problema. Nadie se tiene que acordar de apagarlo. `SIMULADOR_EN_PROD=1`
+sigue existiendo como anulación explícita, para probar el circuito contra una
+base que ya tiene ventas reales.
+
+⚠️ **Apagar el simulador no borra lo que inventó**, y durante un tiempo el
+cartel "Datos simulados" sólo miraba si estaba prendido: se apagaba el
+simulador, desaparecía el cartel, y los números falsos seguían ahí sin que
+nada lo dijera. Ahora el snapshot manda **tres cosas distintas**: `simulador`
+(está corriendo), `simulado` (hay plata inventada adentro de los números que se
+están mostrando) y `simulador_disponible` (se puede prender). El cartel mira el
+segundo, y es además el botón para borrarla — que es donde la persona ya está
+mirando cuando se pregunta por qué los números no cierran.
+
+Lo inventado se borra por `origen = 'simulador'`, así que **las ventas reales
+nunca se tocan**. `npm run probar:demo` levanta un server en modo producción y
+prueba el ciclo entero: se prende, entra una venta real, se apaga sola, no se
+deja prender de nuevo, y borrar lo falso deja la real intacta.
 
 ### El sol se calcula, el clima se pregunta
 

@@ -84,9 +84,16 @@ body{
   text-transform:uppercase;color:rgba(244,242,238,.6);white-space:nowrap;
 }
 .sim{
-  display:inline-flex;align-items:center;gap:6px;padding:3px 8px;
+  display:inline-flex;align-items:center;gap:6px;padding:4px 8px;
   font-family:var(--cond);font-weight:600;font-size:11px;letter-spacing:.13em;
   text-transform:uppercase;color:var(--ink);background:var(--yellow);
+  border:0;cursor:pointer;
+}
+.sim:hover{background:#fff04d}
+/* El botón de demo, prendido, usa el magenta de la marca: tiene que cantar
+   que lo que se está mirando no es real. */
+#btnDemo[aria-pressed="true"]{
+  background:var(--magenta);border-color:var(--magenta);color:var(--paper);
 }
 .spacer{flex:1 1 auto;min-width:0}
 #reloj{
@@ -398,7 +405,11 @@ body{
 
   <div id="barra">
     <div class="logo"><b>TEMPLE</b><span>Minimundo</span></div>
-    <div class="sim" id="simChip" hidden>Datos simulados</div>
+    <button type="button" class="sim" id="simChip" hidden
+            title="Hay facturación inventada en estos números. Tocá para borrarla.">
+      Datos simulados
+    </button>
+    <button type="button" id="btnDemo" class="snd marca" hidden>Demo</button>
     <div class="spacer"></div>
     <div id="reloj" class="marca">
       <div>
@@ -649,6 +660,7 @@ const S = {
   fsumPrevios: 0,
   fsumMes: 1,
   simulado: false,
+  demoDisponible: false,
   conectado: false,
   // Dónde está el sol ahora y a qué hora sale y se pone hoy. Se calcula acá
   // (sol.mjs), no se le pide a nadie.
@@ -706,7 +718,9 @@ function sincronizar(e) {
   S.diasMes = e.dias_mes;
   S.fsumPrevios = e.fsum_previos;
   S.fsumMes = e.fsum_mes || 1;
-  S.simulado = !!e.simulador;
+  S.simulado = !!e.simulado;
+  S.demo = !!e.simulador;
+  S.demoDisponible = !!e.simulador_disponible;
   S.fecha = new Date(e.dia_comercial + 'T12:00:00');
   S.hora = horaDeLaZona();
 
@@ -2555,6 +2569,71 @@ function marcarConexion(ok) {
 
 // El audio sólo puede arrancar desde un gesto del usuario, así que el propio
 // botón es el gesto que crea el contexto.
+/* ── demo ────────────────────────────────────────────────────────────────
+
+   Hasta que el POS esté conectado, el tablero en cero no se puede enseñar ni
+   probar. Este botón prende el simulador del servidor, que inventa tickets
+   siguiendo la curva horaria de cada local.
+
+   Se borra solo. El servidor no deja prenderlo una vez que entró la primera
+   venta real, y si estaba prendido lo apaga en ese mismo momento — así que el
+   botón desaparece justo cuando empieza a estorbar, sin que nadie se tenga que
+   acordar. Mientras tanto la plata inventada queda cantada en magenta. */
+
+function pintarDemo() {
+  const b = $('btnDemo');
+  // Se muestra si se puede prender, o si está prendido (para poder apagarlo).
+  b.hidden = !(S.demoDisponible || S.demo);
+  b.textContent = S.demo ? 'Demo ✓' : 'Demo';
+  b.setAttribute('aria-label', 'Demo con ventas inventadas');
+  b.setAttribute('aria-pressed', String(!!S.demo));
+  b.title = S.demo
+    ? 'Simulador prendido: estas ventas son inventadas. Tocá para pararlo.'
+    : 'Llenar el tablero con ventas inventadas, para verlo andando antes de conectar el sistema de ventas.';
+}
+
+$('btnDemo').addEventListener('click', async () => {
+  const b = $('btnDemo');
+  const prender = !S.demo;
+  b.disabled = true;
+  try {
+    const r = await api('/api/simulador', {
+      method: 'POST',
+      body: JSON.stringify(prender ? { on: true, velocidad: 60 } : { on: false }),
+    });
+    S.demo = !!r.on;
+    S.demoDisponible = r.disponible !== false;
+    if (S.demo) S.simulado = true;
+  } catch (err) {
+    // 403 es la guarda del servidor: ya hay ventas reales.
+    alert(err.status === 403
+      ? 'El simulador ya no se puede prender: entraron ventas reales.'
+      : 'No se pudo cambiar el simulador.');
+    S.demoDisponible = false;
+  }
+  b.disabled = false;
+  $('simChip').hidden = !S.simulado;
+  pintarDemo();
+});
+
+// El cartel de datos simulados es el botón para sacarlos: es donde la persona
+// ya está mirando cuando se pregunta por qué los números no cierran.
+$('simChip').addEventListener('click', async () => {
+  if (!confirm('¿Borrar toda la facturación inventada?\n\nSe borran sólo las ventas del simulador. Las reales, si las hubiera, quedan.')) return;
+  try {
+    await api('/api/simulador/datos', { method: 'DELETE' });
+    if (S.demo) {
+      await api('/api/simulador', { method: 'POST', body: JSON.stringify({ on: false }) });
+      S.demo = false;
+    }
+    // Sin cartel de "listo": los números cayendo a cero y el chip apagándose
+    // se ven, y esto vive en una pantalla que nadie va a ir a cerrar.
+    alSincronizar(await api('/api/estado'));
+  } catch (err) {
+    alert('No se pudieron borrar.');
+  }
+});
+
 $('sonido').addEventListener('click', () => {
   const b = $('sonido');
   audioOn = !audioOn;
@@ -2900,8 +2979,11 @@ function animarClima(dt) {
   const vx = Math.sin(S.sol.azimut + 2.1) * CL.viento;   // una dirección cualquiera, estable
   const vz = Math.cos(S.sol.azimut + 2.1) * CL.viento;
 
-  // nubes
-  PARCHES.mat.opacity = CL.nubes * 0.2;
+  // Nubes. De noche casi no se ven: una nube no tiene luz propia, y un parche
+  // claro cruzando el cielo negro se lee como un fogonazo y no como nube. Queda
+  // un piso bajo, que es el resplandor de la ciudad por debajo.
+  PARCHES.mat.opacity = CL.nubes * (0.05 + S.luz * 0.17);
+  PARCHES.mat.color.setHex(S.luz > 0.25 ? 0xdfe4ef : 0x6f6c82);
   if (CL.nubes > 0.02 && !quieto) {
     for (const m of PARCHES) {
       m.position.x += vx * 7 * dt;
@@ -3242,6 +3324,7 @@ let mundoListo = false;
 function alSincronizar(e) {
   const otroDia = sincronizar(e);
   $('simChip').hidden = !S.simulado;
+  pintarDemo();
 
   if (!mundoListo) {
     construirMundo();

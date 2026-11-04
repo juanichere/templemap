@@ -294,6 +294,18 @@ function registrarVentas(crudas, origen) {
   });
   tx();
 
+  /* La primera venta real apaga el simulador, acá y no en el próximo
+     reinicio. Es el momento exacto en que los datos falsos pasan de ser una
+     demo a ser un problema, y no depende de que alguien se acuerde.
+
+     Las falsas quedan en la base —marcadas origen=simulador— porque borrar
+     datos solo, sin que nadie lo pida, es peor. El tablero avisa que están y
+     se borran con un botón. */
+  if (origen === 'hook' && nuevas.length && SIM.on && motivoBloqueo()) {
+    apagarSimulador();
+    console.warn('  Entró la primera venta real: simulador apagado.');
+  }
+
   // Por el stream sale sólo lo de hoy: un backfill de meses no tiene que
   // inundar a los tableros conectados ni hacerles festejar objetivos viejos.
   const hoy = hoyComercial();
@@ -424,9 +436,25 @@ function estado() {
       objetivo_diario: locales.reduce((a, L) => a + L.objetivo_diario, 0),
       objetivo_mensual: locales.reduce((a, L) => a + L.objetivo_mensual, 0),
     },
+    /* Tres cosas distintas, y antes había una sola.
+
+       `simulador` es si está corriendo. `simulado` es si hay plata inventada
+       dentro de los números que se están mostrando — que es lo que de verdad
+       hay que avisarle a quien mira, y seguía siendo cierto después de apagar
+       el simulador: el cartel desaparecía y los números falsos quedaban.
+       `simulador_disponible` es si se puede prender, para que el tablero
+       muestre el botón sólo mientras sirva. */
     simulador: SIM.on,
+    simulado: SIM.on || hayFalsasEnElMes(desde, hasta),
+    simulador_disponible: motivoBloqueo() === null,
   };
 }
+
+// ¿Hay ventas del simulador adentro de lo que se está mostrando? El mes, que
+// es el rango más largo que mira el tablero.
+const qFalsas = db.prepare(
+  "SELECT 1 FROM ventas WHERE origen = 'simulador' AND dia_com BETWEEN ? AND ? LIMIT 1");
+const hayFalsasEnElMes = (desde, hasta) => !!qFalsas.get(desde, hasta);
 
 // ---------------------------------------------------------------------------
 // SSE
@@ -921,10 +949,40 @@ function tickSimulador(segundos) {
   if (lote.length) registrarVentas(lote, 'simulador');
 }
 
-function prenderSimulador(velocidad) {
-  if (EN_PROD && process.env.SIMULADOR_EN_PROD !== '1') {
-    throw new Error('El simulador está bloqueado en producción. Ver SIMULADOR_EN_PROD.');
+/* ¿Entró alguna venta de verdad alguna vez?
+
+   No se cachea a propósito. Es una consulta por índice sobre una columna con
+   dos valores, y el día que entre el primer ticket real el simulador tiene que
+   cerrarse en ese mismo momento, no en el próximo reinicio. */
+const hayVentasReales = () =>
+  !!db.prepare("SELECT 1 FROM ventas WHERE origen = 'hook' LIMIT 1").get();
+
+/* Por qué no se puede prender, o null si se puede.
+
+   Antes esto era una variable de entorno (`SIMULADOR_EN_PROD`) y en producción
+   quedaba bloqueado siempre. Pero el tablero tiene que poder mostrarse andando
+   **antes** de que el POS esté conectado: un tablero en cero no se puede
+   enseñar ni probar.
+
+   Así que el permiso ya no es una variable sino un hecho: mientras la base no
+   tenga una sola venta real, el simulador está disponible; apenas entra la
+   primera, se cierra solo y para siempre. Que es exactamente cuando empieza a
+   ser peligroso. Nadie se tiene que acordar de apagarlo.
+
+   `SIMULADOR_EN_PROD=1` sigue existiendo como anulación explícita, para probar
+   el circuito contra una base que ya tiene ventas reales. */
+function motivoBloqueo() {
+  if (!EN_PROD || process.env.SIMULADOR_EN_PROD === '1') return null;
+  if (hayVentasReales()) {
+    return 'Ya entraron ventas reales. El simulador queda cerrado para que la '
+      + 'facturación de verdad no se mezcle con la inventada.';
   }
+  return null;
+}
+
+function prenderSimulador(velocidad) {
+  const motivo = motivoBloqueo();
+  if (motivo) throw new Error(motivo);
   SIM.velocidad = Math.min(500, Math.max(1, Number(velocidad) || 1));
   if (SIM.on) return;
   SIM.on = true;
@@ -945,7 +1003,7 @@ app.post('/api/simulador', requiereEscritura, (req, res) => {
   } catch (err) {
     return res.status(403).json({ error: 'BLOQUEADO', detalle: err.message });
   }
-  res.json({ on: SIM.on, velocidad: SIM.velocidad });
+  res.json({ on: SIM.on, velocidad: SIM.velocidad, disponible: motivoBloqueo() === null });
 });
 
 app.delete('/api/simulador/datos', requiereEscritura, (req, res) => {
@@ -973,6 +1031,8 @@ app.get('/salud', (req, res) => {
     ventas: fila.n,
     clientes: clientes.size,
     simulador: SIM.on,
+    simulador_disponible: motivoBloqueo() === null,
+    ventas_reales: hayVentasReales(),
     adaptador: POS_ADAPTADOR,
     hook: HOOK_SECRET ? 'firma' : HOOK_TOKEN ? 'token' : 'sin configurar',
     clima: process.env.CLIMA_OFF === '1' ? 'apagado'

@@ -9,7 +9,8 @@
     "dev": "nodemon server.js",
     "probar": "node probar.js",
     "probar:objetivos": "node probar-objetivos.mjs",
-    "probar:clima": "node probar-clima.mjs"
+    "probar:clima": "node probar-clima.mjs",
+    "probar:demo": "node probar-demo.mjs"
   },
   "engines": {
     "node": ">=20"
