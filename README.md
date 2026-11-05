@@ -143,6 +143,23 @@ en silencio y perder ventas.
 
 ## Conectar el POS de verdad
 
+**El sistema de ventas es Thinkion.** No publica documentación de API ni de webhooks, pero
+dos cosas de su arquitectura importan:
+
+- **Cada venta cerrada ya viaja de la caja al servidor central.** Ese es el punto donde hay
+  que engancharse: es uno solo, no toca la operación de los locales y no depende de la
+  conexión de cada sucursal.
+- **Tiene integraciones con terceros** (Mercado Pago, PedidosYa, Rappi, Glovo), así que la
+  capacidad existe aunque no esté documentada afuera.
+
+Hay tres caminos posibles y cualquiera sirve: que Thinkion haga POST a `/hook/ventas`, que
+exponga una API que consultemos cada uno o dos minutos, o leer la base del servidor central
+con un usuario de sólo lectura si corre en infraestructura de TEMPLE.
+
+Lo que falta es la respuesta de Thinkion. El pedido está escrito como documento aparte para
+mandárselo.
+
+
 Cuatro pasos, en orden:
 
 1. **Escribir el adaptador.** En `adaptadores.js` hay una plantilla comentada.
